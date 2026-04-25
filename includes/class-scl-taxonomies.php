@@ -33,9 +33,7 @@ class Scl_Taxonomies {
 	public static function registrar() {
 		self::registrar_fase();
 		self::registrar_jornada();
-		self::registrar_grupo();
 		self::registrar_term_metas_fase();
-		self::registrar_term_metas_grupo();
 	}
 
 	// -----------------------------------------------------------------------
@@ -108,37 +106,7 @@ class Scl_Taxonomies {
 		] );
 	}
 
-	/**
-	 * Taxonomía: scl_grupo
-	 *
-	 * Subdivide la fase de grupos en grupos paralelos.
-	 * Ejemplos: "Grupo A", "Grupo B", "Zona Norte".
-	 * Es opcional: solo aplica a torneos con múltiples grupos.
-	 */
-	private static function registrar_grupo() {
-		$labels = [
-			'name'              => __( 'Grupos',           'sportcriss-lite' ),
-			'singular_name'     => __( 'Grupo',            'sportcriss-lite' ),
-			'search_items'      => __( 'Buscar grupos',    'sportcriss-lite' ),
-			'all_items'         => __( 'Todos los grupos', 'sportcriss-lite' ),
-			'edit_item'         => __( 'Editar grupo',     'sportcriss-lite' ),
-			'update_item'       => __( 'Actualizar grupo', 'sportcriss-lite' ),
-			'add_new_item'      => __( 'Añadir nuevo grupo', 'sportcriss-lite' ),
-			'new_item_name'     => __( 'Nombre del nuevo grupo', 'sportcriss-lite' ),
-			'menu_name'         => __( 'Grupos',           'sportcriss-lite' ),
-		];
 
-		register_taxonomy( 'scl_grupo', [ 'scl_partido' ], [
-			'labels'            => $labels,
-			'hierarchical'      => false,
-			'public'            => true,
-			'show_ui'           => true,
-			'show_in_menu'      => false,
-			'show_in_rest'      => false,
-			'show_admin_column' => true,
-			'rewrite'           => [ 'slug' => 'grupo', 'with_front' => false ],
-		] );
-	}
 
 	// -----------------------------------------------------------------------
 	// Term metas
@@ -178,33 +146,4 @@ class Scl_Taxonomies {
 		] );
 	}
 
-	/**
-	 * Registra los term metas de la taxonomía scl_grupo.
-	 */
-	private static function registrar_term_metas_grupo() {
-		register_term_meta( 'scl_grupo', 'scl_grupo_torneo_id', [
-			'type'              => 'integer',
-			'description'       => __( 'ID del Torneo al que pertenece este grupo', 'sportcriss-lite' ),
-			'single'            => true,
-			'default'           => 0,
-			'sanitize_callback' => 'absint',
-			'show_in_rest'      => false,
-		] );
-	}
-}
-
-/**
- * Función auxiliar para obtener grupos por torneo
- *
- * @param int $torneo_id
- * @return array
- */
-function scl_get_grupos_por_torneo( int $torneo_id ): array {
-	$terms = get_terms( [ 'taxonomy' => 'scl_grupo', 'hide_empty' => false ] );
-	if ( is_wp_error( $terms ) ) {
-		return [];
-	}
-	return array_filter( $terms, function( $term ) use ( $torneo_id ) {
-		return (int) get_term_meta( $term->term_id, 'scl_grupo_torneo_id', true ) === $torneo_id;
-	});
 }

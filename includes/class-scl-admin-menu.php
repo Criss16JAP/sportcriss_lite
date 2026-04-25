@@ -55,6 +55,15 @@ class Scl_Admin_Menu {
 			'edit.php?post_type=scl_torneo'
 		);
 
+		// Submenú: Grupos
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Grupos', 'sportcriss-lite' ),
+			__( 'Grupos', 'sportcriss-lite' ),
+			'manage_options',
+			'edit.php?post_type=scl_grupo'
+		);
+
 		// Submenú: Equipos
 		add_submenu_page(
 			self::PARENT_SLUG,
@@ -109,14 +118,7 @@ class Scl_Admin_Menu {
 			'edit-tags.php?taxonomy=scl_jornada'
 		);
 
-		// Submenú: Grupos (taxonomía de partidos)
-		add_submenu_page(
-			self::PARENT_SLUG,
-			__( 'Grupos', 'sportcriss-lite' ),
-			__( 'Grupos', 'sportcriss-lite' ),
-			'manage_options',
-			'edit-tags.php?taxonomy=scl_grupo'
-		);
+
 
 		// Submenú: Configuración (placeholder — completado en Sprint 11)
 		add_submenu_page(

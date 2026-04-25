@@ -61,6 +61,18 @@ function scl_activar_plugin() {
 	Scl_Taxonomies::registrar();
 	flush_rewrite_rules();
 	Scl_Roles::crear_datos_base();
+
+	// Sprint 3: Página del dashboard
+	$pagina = get_page_by_path( 'mi-panel' );
+	if ( ! $pagina ) {
+		wp_insert_post( [
+			'post_title'   => 'Mi Panel',
+			'post_name'    => 'mi-panel',
+			'post_status'  => 'publish',
+			'post_type'    => 'page',
+			'post_content' => '[scl_dashboard]',
+		] );
+	}
 }
 
 /**

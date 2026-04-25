@@ -117,8 +117,7 @@ class Scl_Engine {
 			
 			if ( ! $local_id || ! $visita_id ) continue;
 
-			$grupos = wp_get_post_terms( $p->ID, 'scl_grupo' );
-			$grupo_id = ( ! empty( $grupos ) && ! is_wp_error( $grupos ) ) ? $grupos[0]->term_id : null;
+			$grupo_id  = (int) get_post_meta( $p->ID, 'scl_partido_grupo_id', true );
 
 			$contextos = [ 'general' ];
 			if ( $grupo_id ) {
@@ -278,4 +277,21 @@ function scl_get_tabla( int $temporada_id, $grupo_id = 'general' ): array {
 	$cache = json_decode( $raw, true );
 	if ( ! is_array( $cache ) || ! isset( $cache['tablas'] ) ) return [];
 	return $cache['tablas'][ $grupo_id ] ?? [];
+}
+
+/**
+ * Función global auxiliar para obtener grupos por torneo
+ *
+ * @param int $torneo_id
+ * @return WP_Post[]
+ */
+function scl_get_grupos_por_torneo( int $torneo_id ): array {
+	return get_posts( [
+		'post_type'      => 'scl_grupo',
+		'post_parent'    => $torneo_id,
+		'post_status'    => 'publish',
+		'posts_per_page' => -1,
+		'orderby'        => 'title',
+		'order'          => 'ASC',
+	] );
 }

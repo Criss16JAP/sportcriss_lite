@@ -29,7 +29,7 @@ class Scl_Ajax {
 	}
 
 	/**
-	 * Devuelve los términos de scl_grupo filtrados por scl_grupo_torneo_id.
+	 * Devuelve los CPTs de scl_grupo filtrados por torneo_id (post_parent).
 	 */
 	public function ajax_get_grupos_por_torneo() {
 		check_ajax_referer( 'scl_ajax_nonce', 'nonce' );
@@ -53,11 +53,21 @@ class Scl_Ajax {
 			wp_send_json_error( 'Temporada no tiene torneo.' );
 		}
 
-		$grupos = scl_get_grupos_por_torneo( $torneo_id );
+		$grupos = get_posts( [
+			'post_type'      => 'scl_grupo',
+			'post_parent'    => $torneo_id,
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
 		
 		$data = [];
 		foreach ( $grupos as $g ) {
-			$data[] = $g->term_id;
+			$data[] = [
+				'ID'         => $g->ID,
+				'post_title' => $g->post_title,
+			];
 		}
 
 		wp_send_json_success( $data );

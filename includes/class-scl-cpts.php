@@ -32,6 +32,7 @@ class Scl_Cpts {
 		self::registrar_temporada();
 		self::registrar_partido();
 		self::registrar_llave();
+		self::registrar_grupo();
 	}
 
 	// -----------------------------------------------------------------------
@@ -202,6 +203,36 @@ class Scl_Cpts {
 			'show_in_menu'  => false,
 			'supports'      => [ 'title' ],
 			'rewrite'       => [ 'slug' => 'llave', 'with_front' => false ],
+		] );
+	}
+
+	/**
+	 * CPT: scl_grupo
+	 *
+	 * Grupo de una fase de grupos. Usa post_parent para vincularse al scl_torneo.
+	 */
+	private static function registrar_grupo() {
+		$labels = [
+			'name'               => __( 'Grupos',              'sportcriss-lite' ),
+			'singular_name'      => __( 'Grupo',               'sportcriss-lite' ),
+			'add_new'            => __( 'Añadir grupo',        'sportcriss-lite' ),
+			'add_new_item'       => __( 'Añadir nuevo grupo',  'sportcriss-lite' ),
+			'edit_item'          => __( 'Editar grupo',        'sportcriss-lite' ),
+			'new_item'           => __( 'Nuevo grupo',         'sportcriss-lite' ),
+			'view_item'          => __( 'Ver grupo',           'sportcriss-lite' ),
+			'search_items'       => __( 'Buscar grupos',       'sportcriss-lite' ),
+			'not_found'          => __( 'No se encontraron grupos', 'sportcriss-lite' ),
+		];
+
+		register_post_type( 'scl_grupo', [
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => false,
+			'hierarchical'  => true,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title' ],
+			'rewrite'       => [ 'slug' => 'grupo', 'with_front' => false ],
 		] );
 	}
 }
