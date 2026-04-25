@@ -24,8 +24,8 @@ class Scl_Ajax {
 	 * @param Scl_Loader $loader Instancia del loader de hooks.
 	 */
 	public function registrar_handlers( $loader ) {
-		$loader->add_action( 'wp_ajax_scl_get_grupos_por_torneo', $this, 'get_grupos_por_torneo' );
-		$loader->add_action( 'wp_ajax_scl_confirmar_ganador_llave', $this, 'ajax_confirmar_ganador_llave' );
+		$loader->add_action( 'wp_ajax_scl_get_grupos_por_torneo', [ $this, 'get_grupos_por_torneo' ] );
+		$loader->add_action( 'wp_ajax_scl_confirmar_ganador_llave', [ $this, 'ajax_confirmar_ganador_llave' ] );
 	}
 
 	public function get_grupos_por_torneo(): void {
@@ -42,9 +42,9 @@ class Scl_Ajax {
 			wp_send_json_error( 'Temporada no válida' );
 		}
 
-		$torneo_id = (int) $temporada->post_parent;
+		$torneo_id = (int) get_post_meta( $temporada_id, 'scl_temporada_torneo_id', true );
 		if ( ! $torneo_id ) {
-			wp_send_json_error( 'La temporada no tiene torneo padre asignado' );
+			wp_send_json_error( 'La temporada no tiene torneo asignado' );
 		}
 
 		// Buscar grupos cuyo post_parent sea el torneo

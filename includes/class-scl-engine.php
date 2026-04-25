@@ -59,7 +59,7 @@ class Scl_Engine {
 			return;
 		}
 
-		$torneo_id = $temporada->post_parent;
+		$torneo_id = (int) get_post_meta( $temporada_id, 'scl_temporada_torneo_id', true );
 		if ( ! $torneo_id ) {
 			return;
 		}
@@ -253,7 +253,8 @@ class Scl_Engine {
 	public function recalcular_todas( int $torneo_id ): void {
 		$temporadas = get_posts( [
 			'post_type'      => 'scl_temporada',
-			'post_parent'    => $torneo_id,
+			'meta_key'       => 'scl_temporada_torneo_id',
+			'meta_value'     => $torneo_id,
 			'posts_per_page' => -1,
 			'post_status'    => 'publish'
 		] );

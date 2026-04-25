@@ -108,8 +108,8 @@ class Scl_Cpts {
 	/**
 	 * CPT: scl_temporada
 	 *
-	 * Temporadas de un torneo. Usa post_parent para vincularse al scl_torneo.
-	 * Es jerárquico (hierarchical: true) para que WordPress gestione post_parent.
+	 * Temporadas de un torneo.
+	 * Es independiente (hierarchical: false) y se vincula mediante meta.
 	 * Ejemplos: "Apertura 2025", "Clausura 2025".
 	 */
 	private static function registrar_temporada() {
@@ -131,10 +131,10 @@ class Scl_Cpts {
 			'labels'        => $labels,
 			'public'        => true,
 			'has_archive'   => false,
-			'hierarchical'  => true,
+			'hierarchical'  => false,
 			'show_in_rest'  => false,
 			'show_in_menu'  => false,
-			'supports'      => [ 'title', 'page-attributes' ],
+			'supports'      => [ 'title' ],
 			'rewrite'       => [ 'slug' => 'temporada', 'with_front' => false ],
 		] );
 	}

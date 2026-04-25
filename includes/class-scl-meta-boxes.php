@@ -21,6 +21,8 @@ if ( ! defined( 'ABSPATH' ) ) exit;
  */
 class Scl_Meta_Boxes {
 
+	private static bool $generando_titulo = false;
+
 	// -----------------------------------------------------------------------
 	// Registro de meta boxes
 	// -----------------------------------------------------------------------
@@ -455,12 +457,34 @@ class Scl_Meta_Boxes {
 	public function render_temporada( $post ) {
 		wp_nonce_field( 'scl_guardar_temporada', 'scl_temporada_nonce' );
 
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+		$torneo_guardado = (int) get_post_meta( $post->ID, 'scl_temporada_torneo_id', true );
+
 		$estado     = get_post_meta( $post->ID, 'scl_temporada_estado', true ) ?: 'activa';
 		$anio       = get_post_meta( $post->ID, 'scl_temporada_anio',   true ) ?: date( 'Y' );
 		$cache      = get_post_meta( $post->ID, 'scl_temporada_tabla_cache',      true );
 		$updated_at = get_post_meta( $post->ID, 'scl_temporada_tabla_updated_at', true );
 		?>
 		<table class="form-table">
+			<tr>
+				<th><label for="scl_temporada_torneo_id"><?php esc_html_e( 'Torneo al que pertenece', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select name="scl_temporada_torneo_id" id="scl_temporada_torneo_id" required>
+						<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+						<?php foreach ( $torneos as $torneo ) : ?>
+							<option value="<?php echo esc_attr( $torneo->ID ); ?>" <?php selected( $torneo_guardado, $torneo->ID ); ?>>
+								<?php echo esc_html( $torneo->post_title ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
 			<tr>
 				<th><label for="scl_temporada_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label></th>
 				<td>
@@ -1014,7 +1038,7 @@ class Scl_Meta_Boxes {
 				$this->guardar_temporada( $post_id );
 				break;
 			case 'scl_partido':
-				$this->guardar_partido( $post_id );
+				$this->guardar_partido( $post_id, $post );
 				break;
 			case 'scl_llave':
 				$this->guardar_llave( $post_id );
@@ -1113,6 +1137,9 @@ class Scl_Meta_Boxes {
 
 		$anio = isset( $_POST['scl_temporada_anio'] ) ? absint( $_POST['scl_temporada_anio'] ) : absint( date( 'Y' ) );
 
+		$torneo_id = absint( $_POST['scl_temporada_torneo_id'] ?? 0 );
+
+		update_post_meta( $post_id, 'scl_temporada_torneo_id', $torneo_id );
 		update_post_meta( $post_id, 'scl_temporada_estado', $estado );
 		update_post_meta( $post_id, 'scl_temporada_anio',   $anio );
 		// tabla_cache y tabla_updated_at son readonly: los gestiona el motor.
@@ -1121,9 +1148,13 @@ class Scl_Meta_Boxes {
 	/**
 	 * Guarda los metas de scl_partido.
 	 *
-	 * @param int $post_id
+	 * @param int     $post_id
+	 * @param WP_Post $post
 	 */
-	private function guardar_partido( $post_id ) {
+	public function guardar_partido( int $post_id, WP_Post $post ): void {
+		// Evitar loop infinito
+		if ( self::$generando_titulo ) return;
+
 		if ( ! isset( $_POST['scl_partido_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_partido_nonce'] ) ), 'scl_guardar_partido' ) ) return;
 
@@ -1172,71 +1203,50 @@ class Scl_Meta_Boxes {
 		update_post_meta( $post_id, 'scl_partido_grupo_id',         $grupo_id );
 		// llave_id es readonly: lo gestiona el motor de llaves.
 
-		// Generar título automático solo si hay equipos y temporada seleccionados
-		if ( $equipo_local_id && $equipo_visita_id && $temporada_id ) {
-			$titulo = $this->generar_titulo_partido( $post_id, $equipo_local_id, $equipo_visita_id, $temporada_id );
-			if ( $titulo ) {
-				// Quitar el hook temporalmente para evitar loop infinito
-				remove_action( 'save_post_scl_partido', [ $this, 'guardar_partido' ], 10 );
-				wp_update_post( [
-					'ID'         => $post_id,
-					'post_title' => $titulo,
-					'post_name'  => sanitize_title( $titulo ),
-				] );
-				add_action( 'save_post_scl_partido', [ $this, 'guardar_partido' ], 10, 2 );
-			}
+		// Generar título automático
+		$titulo = $this->generar_titulo_partido( $post_id );
+		if ( $titulo && $titulo !== $post->post_title ) {
+			self::$generando_titulo = true;
+			wp_update_post( [
+				'ID'         => $post_id,
+				'post_title' => $titulo,
+				'post_name'  => sanitize_title( $titulo ),
+			] );
+			self::$generando_titulo = false;
 		}
 	}
 
-	/**
-	 * Genera el título automático de un partido con el patrón:
-	 * [SIGLAS] · Local vs Visitante · Jornada · Temporada
-	 *
-	 * Si no hay jornada asignada, el segmento se omite sin dejar · doble.
-	 *
-	 * @param int $post_id          ID del partido (para consultar taxonomías asignadas).
-	 * @param int $equipo_local_id  ID del scl_equipo local.
-	 * @param int $equipo_visita_id ID del scl_equipo visitante.
-	 * @param int $temporada_id     ID del scl_temporada.
-	 * @return string Título generado, o '' si faltan datos mínimos.
-	 */
-	private function generar_titulo_partido( $post_id, $equipo_local_id, $equipo_visita_id, $temporada_id ) {
-		$nombre_local   = get_the_title( $equipo_local_id );
-		$nombre_visita  = get_the_title( $equipo_visita_id );
-		$nombre_temp    = get_the_title( $temporada_id );
+	private function generar_titulo_partido( int $post_id ): string {
+		$temporada_id  = (int) get_post_meta( $post_id, 'scl_partido_temporada_id', true );
+		$local_id      = (int) get_post_meta( $post_id, 'scl_partido_equipo_local_id', true );
+		$visita_id     = (int) get_post_meta( $post_id, 'scl_partido_equipo_visita_id', true );
 
-		if ( ! $nombre_local || ! $nombre_visita || ! $nombre_temp ) {
-			return '';
+		if ( ! $temporada_id || ! $local_id || ! $visita_id ) return '';
+
+		$temporada = get_post( $temporada_id );
+		if ( ! $temporada ) return '';
+
+		// Obtener torneo via meta
+		$torneo_id = (int) get_post_meta( $temporada_id, 'scl_temporada_torneo_id', true );
+		$siglas    = $torneo_id
+			? strtoupper( get_post_meta( $torneo_id, 'scl_torneo_siglas', true ) )
+			: '';
+		if ( ! $siglas && $torneo_id ) {
+			$siglas = strtoupper( substr( get_the_title( $torneo_id ), 0, 3 ) );
 		}
 
-		// Obtener siglas desde el torneo padre de la temporada
-		$temporada_post = get_post( $temporada_id );
-		$siglas         = '';
-		if ( $temporada_post && $temporada_post->post_parent ) {
-			$siglas = get_post_meta( $temporada_post->post_parent, 'scl_torneo_siglas', true );
-			if ( ! $siglas ) {
-				// Fallback: primeras 3 letras del nombre del torneo en mayúsculas
-				$nombre_torneo = get_the_title( $temporada_post->post_parent );
-				$siglas        = strtoupper( substr( $nombre_torneo, 0, 3 ) );
-			}
-		}
+		$local  = get_the_title( $local_id );
+		$visita = get_the_title( $visita_id );
 
-		// Jornada asignada al partido (puede no tener)
-		$jornadas = wp_get_post_terms( $post_id, 'scl_jornada', [ 'fields' => 'names' ] );
-		$jornada  = ( ! is_wp_error( $jornadas ) && ! empty( $jornadas ) ) ? $jornadas[0] : '';
+		// Jornada si tiene
+		$jornadas = wp_get_post_terms( $post_id, 'scl_jornada' );
+		$jornada  = ( ! is_wp_error( $jornadas ) && ! empty( $jornadas ) )
+			? ' · ' . $jornadas[0]->name
+			: '';
 
-		// Construcción del título
-		$partes = [];
-		if ( $siglas ) {
-			$partes[] = '[' . $siglas . ']';
-		}
-		$partes[] = $nombre_local . ' vs ' . $nombre_visita;
-		if ( $jornada ) {
-			$partes[] = $jornada;
-		}
-		$partes[] = $nombre_temp;
+		$prefijo = $siglas ? "[{$siglas}]" : '';
 
-		return implode( ' · ', $partes );
+		return trim( "{$prefijo} · {$local} vs {$visita}{$jornada} · {$temporada->post_title}" );
 	}
 
 	/**
@@ -1320,7 +1330,8 @@ class Scl_Meta_Boxes {
 
 		$agrupadas = [];
 		foreach ( $temporadas as $t ) {
-			$torneo = $t->post_parent ? get_post( $t->post_parent ) : null;
+			$torneo_id = (int) get_post_meta( $t->ID, 'scl_temporada_torneo_id', true );
+			$torneo = $torneo_id ? get_post( $torneo_id ) : null;
 			$torneo_nombre = $torneo ? $torneo->post_title : __( 'Sin torneo', 'sportcriss-lite' );
 			$agrupadas[ $torneo_nombre ][] = [
 				'id'     => $t->ID,
