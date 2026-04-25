@@ -1217,8 +1217,6 @@ class Scl_Meta_Boxes {
 		update_post_meta( $post_id, 'scl_torneo_fondo', $fondo );
 	}
 
-	}
-
 	/**
 	 * Guarda los metas de scl_partido.
 	 *
