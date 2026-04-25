@@ -114,10 +114,11 @@ class Scl_Meta_Boxes {
 			'high'
 		);
 
-		add_action( 'scl_fase_add_form_fields',  [ $this, 'render_fase_add_fields' ] );
-		add_action( 'scl_fase_edit_form_fields', [ $this, 'render_fase_edit_fields' ] );
-		add_action( 'created_scl_fase',          [ $this, 'guardar_fase_term_meta' ] );
-		add_action( 'edited_scl_fase',           [ $this, 'guardar_fase_term_meta' ] );
+		// Remover term meta box nativo de scl_temporada para evitar duplicados en la edición
+		add_action( 'add_meta_boxes', function() {
+			remove_meta_box( 'tagsdiv-scl_temporada', 'scl_partido', 'side' );
+			remove_meta_box( 'tagsdiv-scl_temporada', 'scl_partido', 'normal' );
+		}, 99 );
 
 		// Term meta boxes para scl_temporada
 		add_action( 'scl_temporada_add_form_fields',  [ $this, 'temporada_add_fields' ] );
@@ -458,6 +459,7 @@ class Scl_Meta_Boxes {
 		$grupo_id     = absint( get_post_meta( $post->ID, 'scl_partido_grupo_id', true ) );
 		$fecha        = get_post_meta( $post->ID, 'scl_partido_fecha',   true );
 		$estado       = get_post_meta( $post->ID, 'scl_partido_estado',  true ) ?: 'pendiente';
+		$tipo_fase    = get_post_meta( $post->ID, 'scl_partido_tipo_fase', true ) ?: 'grupos';
 
 		$terms = wp_get_post_terms( $post->ID, 'scl_temporada' );
 		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) ) ? $terms[0]->term_id : 0;
@@ -492,6 +494,23 @@ class Scl_Meta_Boxes {
 					<select id="scl_partido_temporada_term_id" name="scl_partido_temporada_term_id" data-selected="<?php echo esc_attr( $temporada_term_id ); ?>">
 						<option value="0"><?php esc_html_e( '— Sin temporada —', 'sportcriss-lite' ); ?></option>
 					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_partido_tipo_fase">Tipo de fase</label></th>
+				<td>
+					<select id="scl_partido_tipo_fase" name="scl_partido_tipo_fase">
+						<option value="grupos" <?php selected( $tipo_fase, 'grupos' ); ?>>
+							Grupos (suma puntos a la tabla)
+						</option>
+						<option value="playoff" <?php selected( $tipo_fase, 'playoff' ); ?>>
+							Playoff (no suma puntos · puede tener penales)
+						</option>
+					</select>
+					<p class="description">
+						Los partidos de Grupos afectan la tabla de posiciones.
+						Los de Playoff determinan quién avanza pero no suman puntos.
+					</p>
 				</td>
 			</tr>
 			<tr>
@@ -732,22 +751,7 @@ class Scl_Meta_Boxes {
 					</select>
 				</td>
 			</tr>
-			<tr>
-				<th><label for="scl_llave_fase_term_id"><?php esc_html_e( 'Fase (playoff)', 'sportcriss-lite' ); ?></label></th>
-				<td>
-					<select id="scl_llave_fase_term_id" name="scl_llave_fase_term_id">
-						<option value=""><?php esc_html_e( '— Seleccionar fase —', 'sportcriss-lite' ); ?></option>
-						<?php foreach ( $fases_playoff as $fase ) : ?>
-							<option value="<?php echo esc_attr( $fase->term_id ); ?>" <?php selected( $fase_term_id, $fase->term_id ); ?>>
-								<?php echo esc_html( $fase->name ); ?>
-							</option>
-						<?php endforeach; ?>
-					</select>
-					<?php if ( empty( $fases_playoff ) ) : ?>
-						<p class="description"><?php esc_html_e( 'No hay fases con "es playoff" activo. Créalas en el menú Fases.', 'sportcriss-lite' ); ?></p>
-					<?php endif; ?>
-				</td>
-			</tr>
+
 			<tr>
 				<th><?php esc_html_e( 'ID partido de ida', 'sportcriss-lite' ); ?></th>
 				<td>
@@ -872,89 +876,6 @@ class Scl_Meta_Boxes {
 		<?php
 	}
 
-	// -----------------------------------------------------------------------
-	// Render: term meta boxes para scl_fase
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Campos en el formulario de CREACIÓN de término scl_fase.
-	 * Hook: scl_fase_add_form_fields
-	 */
-	public function render_fase_add_fields() {
-		wp_nonce_field( 'scl_guardar_term_fase', 'scl_fase_nonce' );
-		?>
-		<div class="form-field">
-			<label>
-				<input type="checkbox" name="scl_fase_suma_puntos" value="1" checked>
-				<?php esc_html_e( '¿Esta fase suma puntos a la tabla de posiciones?', 'sportcriss-lite' ); ?>
-			</label>
-		</div>
-		<div class="form-field">
-			<label>
-				<input type="checkbox" name="scl_fase_es_playoff" value="1">
-				<?php esc_html_e( '¿Esta fase es de playoff? (habilita llaves y penales)', 'sportcriss-lite' ); ?>
-			</label>
-		</div>
-		<?php
-	}
-
-	/**
-	 * Campos en el formulario de EDICIÓN de término scl_fase.
-	 * Hook: scl_fase_edit_form_fields
-	 *
-	 * @param WP_Term $term
-	 */
-	public function render_fase_edit_fields( $term ) {
-		wp_nonce_field( 'scl_guardar_term_fase', 'scl_fase_nonce' );
-
-		$suma_puntos = get_term_meta( $term->term_id, 'scl_fase_suma_puntos', true );
-		$es_playoff  = get_term_meta( $term->term_id, 'scl_fase_es_playoff',  true );
-
-		// Si aún no tiene meta guardado, aplicar defaults del registro
-		if ( '' === $suma_puntos ) $suma_puntos = true;
-		if ( '' === $es_playoff )  $es_playoff  = false;
-		?>
-		<tr class="form-field">
-			<th><?php esc_html_e( 'Suma puntos a la tabla', 'sportcriss-lite' ); ?></th>
-			<td>
-				<label>
-					<input type="checkbox" name="scl_fase_suma_puntos" value="1" <?php checked( $suma_puntos ); ?>>
-					<?php esc_html_e( '¿Esta fase suma puntos a la tabla de posiciones?', 'sportcriss-lite' ); ?>
-				</label>
-			</td>
-		</tr>
-		<tr class="form-field">
-			<th><?php esc_html_e( 'Es playoff', 'sportcriss-lite' ); ?></th>
-			<td>
-				<label>
-					<input type="checkbox" name="scl_fase_es_playoff" value="1" <?php checked( $es_playoff ); ?>>
-					<?php esc_html_e( '¿Esta fase es de playoff? (habilita llaves y penales)', 'sportcriss-lite' ); ?>
-				</label>
-			</td>
-		</tr>
-		<?php
-	}
-
-	/**
-	 * Guarda los term metas de scl_fase.
-	 * Hook: created_scl_fase y edited_scl_fase
-	 *
-	 * @param int $term_id
-	 */
-	public function guardar_fase_term_meta( $term_id ) {
-		if ( ! isset( $_POST['scl_fase_nonce'] ) ) {
-			return;
-		}
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_fase_nonce'] ) ), 'scl_guardar_term_fase' ) ) {
-			return;
-		}
-
-		$suma_puntos = isset( $_POST['scl_fase_suma_puntos'] ) ? true : false;
-		$es_playoff  = isset( $_POST['scl_fase_es_playoff'] )  ? true : false;
-
-		update_term_meta( $term_id, 'scl_fase_suma_puntos', $suma_puntos );
-		update_term_meta( $term_id, 'scl_fase_es_playoff',  $es_playoff );
-	}
 
 	// -----------------------------------------------------------------------
 	// Render: term meta boxes para scl_temporada
@@ -1244,6 +1165,10 @@ class Scl_Meta_Boxes {
 
 		$grupo_id         = isset( $_POST['scl_partido_grupo_id'] )         ? absint( $_POST['scl_partido_grupo_id'] )         : 0;
 
+		$tipo_fase = in_array( $_POST['scl_partido_tipo_fase'] ?? '', [ 'grupos', 'playoff' ], true )
+			? $_POST['scl_partido_tipo_fase']
+			: 'grupos';
+
 		$estados_validos = [ 'pendiente', 'finalizado' ];
 		$estado = isset( $_POST['scl_partido_estado'] ) ? sanitize_text_field( wp_unslash( $_POST['scl_partido_estado'] ) ) : 'pendiente';
 		if ( ! in_array( $estado, $estados_validos, true ) ) {
@@ -1280,11 +1205,12 @@ class Scl_Meta_Boxes {
 		update_post_meta( $post_id, 'scl_partido_fecha',            $fecha );
 		update_post_meta( $post_id, 'scl_partido_es_vuelta',        $es_vuelta );
 		update_post_meta( $post_id, 'scl_partido_grupo_id',         $grupo_id );
+		update_post_meta( $post_id, 'scl_partido_tipo_fase',        $tipo_fase );
 		// llave_id es readonly: lo gestiona el motor de llaves.
 
 		// Generar título automático
 		$titulo = $this->generar_titulo_partido( $post_id );
-		if ( $titulo && $titulo !== $post->post_title ) {
+		if ( ! empty( $titulo ) && $titulo !== get_the_title( $post_id ) ) {
 			self::$generando_titulo = true;
 			wp_update_post( [
 				'ID'         => $post_id,
@@ -1296,38 +1222,41 @@ class Scl_Meta_Boxes {
 	}
 
 	private function generar_titulo_partido( int $post_id ): string {
-		$torneo_id     = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
-		$local_id      = (int) get_post_meta( $post_id, 'scl_partido_equipo_local_id', true );
-		$visita_id     = (int) get_post_meta( $post_id, 'scl_partido_equipo_visita_id', true );
+		$torneo_id    = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
+		$local_id     = (int) get_post_meta( $post_id, 'scl_partido_equipo_local_id', true );
+		$visita_id    = (int) get_post_meta( $post_id, 'scl_partido_equipo_visita_id', true );
 
-		$terms = wp_get_post_terms( $post_id, 'scl_temporada' );
-		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) ) ? $terms[0]->term_id : 0;
-
-		if ( ! $temporada_term_id || ! $local_id || ! $visita_id ) return '';
-
-		$temporada = get_term( $temporada_term_id, 'scl_temporada' );
-		if ( ! $temporada || is_wp_error( $temporada ) ) return '';
-
-		// Obtener siglas del torneo
-		$siglas = $torneo_id
-			? strtoupper( get_post_meta( $torneo_id, 'scl_torneo_siglas', true ) )
-			: '';
-		if ( ! $siglas && $torneo_id ) {
-			$siglas = strtoupper( substr( get_the_title( $torneo_id ), 0, 3 ) );
+		// Sin equipos no hay título posible — salir silenciosamente
+		if ( ! $local_id || ! $visita_id ) {
+			return '';
 		}
 
 		$local  = get_the_title( $local_id );
 		$visita = get_the_title( $visita_id );
 
-		// Jornada si tiene
+		// Siglas del torneo (opcional)
+		$prefijo = '';
+		if ( $torneo_id ) {
+			$siglas = strtoupper( trim( get_post_meta( $torneo_id, 'scl_torneo_siglas', true ) ) );
+			if ( ! $siglas ) {
+				$siglas = strtoupper( substr( get_the_title( $torneo_id ), 0, 3 ) );
+			}
+			$prefijo = "[{$siglas}] · ";
+		}
+
+		// Temporada desde taxonomía (opcional)
+		$terms = wp_get_post_terms( $post_id, 'scl_temporada' );
+		$temporada = ( ! is_wp_error( $terms ) && ! empty( $terms ) )
+			? ' · ' . $terms[0]->name
+			: '';
+
+		// Jornada (opcional)
 		$jornadas = wp_get_post_terms( $post_id, 'scl_jornada' );
 		$jornada  = ( ! is_wp_error( $jornadas ) && ! empty( $jornadas ) )
 			? ' · ' . $jornadas[0]->name
 			: '';
 
-		$prefijo = $siglas ? "[{$siglas}]" : '';
-
-		return trim( "{$prefijo} · {$local} vs {$visita}{$jornada} · {$temporada->name}" );
+		return $prefijo . $local . ' vs ' . $visita . $jornada . $temporada;
 	}
 
 	/**
@@ -1347,7 +1276,6 @@ class Scl_Meta_Boxes {
 		}
 
 		$torneo_id     = isset( $_POST['scl_llave_torneo_id'] )     ? absint( $_POST['scl_llave_torneo_id'] )     : 0;
-		$fase_term_id  = isset( $_POST['scl_llave_fase_term_id'] )  ? absint( $_POST['scl_llave_fase_term_id'] )  : 0;
 		$es_doble      = isset( $_POST['scl_llave_es_doble'] )      ? '1' : '0';
 		$ganador_id    = isset( $_POST['scl_llave_ganador_id'] )    ? absint( $_POST['scl_llave_ganador_id'] )    : 0;
 		$penales_local = isset( $_POST['scl_llave_penales_local'] ) && '' !== $_POST['scl_llave_penales_local']
@@ -1362,7 +1290,6 @@ class Scl_Meta_Boxes {
 		}
 
 		update_post_meta( $post_id, 'scl_llave_torneo_id',         $torneo_id );
-		update_post_meta( $post_id, 'scl_llave_fase_term_id',      $fase_term_id );
 		update_post_meta( $post_id, 'scl_llave_es_doble',      $es_doble );
 		update_post_meta( $post_id, 'scl_llave_ganador_id',    $ganador_id );
 		update_post_meta( $post_id, 'scl_llave_penales_local', $penales_local );

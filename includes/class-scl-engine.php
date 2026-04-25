@@ -32,15 +32,9 @@ class Scl_Engine {
 			return;
 		}
 
-		$terms = wp_get_post_terms( $post_id, 'scl_fase' );
-		if ( empty( $terms ) || is_wp_error( $terms ) ) {
-			return;
-		}
-
-		$suma_puntos = get_term_meta( $terms[0]->term_id, 'scl_fase_suma_puntos', true );
-		if ( ! $suma_puntos || '0' === $suma_puntos ) {
-			return;
-		}
+		// Verificar tipo de fase antes de recalcular
+		$tipo_fase = get_post_meta( $post_id, 'scl_partido_tipo_fase', true );
+		if ( $tipo_fase !== 'grupos' ) return; // playoff no afecta tabla
 
 		$torneo_id = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
 		$terms = wp_get_post_terms( $post_id, 'scl_temporada' );
@@ -100,9 +94,8 @@ class Scl_Engine {
 		$partidos = $partidos_query->posts;
 
 		$partidos_validos = array_filter( $partidos, function( $p ) {
-			$terms = wp_get_post_terms( $p->ID, 'scl_fase' );
-			if ( empty( $terms ) || is_wp_error( $terms ) ) return false;
-			return (bool) get_term_meta( $terms[0]->term_id, 'scl_fase_suma_puntos', true );
+			$tipo_fase = get_post_meta( $p->ID, 'scl_partido_tipo_fase', true );
+			return $tipo_fase === 'grupos';
 		});
 
 		$stats = [];

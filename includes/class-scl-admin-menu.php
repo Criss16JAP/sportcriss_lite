@@ -79,7 +79,7 @@ class Scl_Admin_Menu {
 			__( 'Temporadas', 'sportcriss-lite' ),
 			__( 'Temporadas', 'sportcriss-lite' ),
 			'manage_options',
-			'edit.php?post_type=scl_temporada'
+			'edit-tags.php?taxonomy=scl_temporada'
 		);
 
 		// Submenú: Partidos
@@ -98,15 +98,6 @@ class Scl_Admin_Menu {
 			__( 'Llaves', 'sportcriss-lite' ),
 			'manage_options',
 			'edit.php?post_type=scl_llave'
-		);
-
-		// Submenú: Fases (taxonomía de partidos)
-		add_submenu_page(
-			self::PARENT_SLUG,
-			__( 'Fases', 'sportcriss-lite' ),
-			__( 'Fases', 'sportcriss-lite' ),
-			'manage_options',
-			'edit-tags.php?taxonomy=scl_fase'
 		);
 
 		// Submenú: Jornadas (taxonomía de partidos)
