@@ -29,7 +29,6 @@ class Scl_Cpts {
 	public static function registrar() {
 		self::registrar_equipo();
 		self::registrar_torneo();
-		self::registrar_temporada();
 		self::registrar_partido();
 		self::registrar_llave();
 		self::registrar_grupo();
@@ -105,39 +104,6 @@ class Scl_Cpts {
 		] );
 	}
 
-	/**
-	 * CPT: scl_temporada
-	 *
-	 * Temporadas de un torneo.
-	 * Es independiente (hierarchical: false) y se vincula mediante meta.
-	 * Ejemplos: "Apertura 2025", "Clausura 2025".
-	 */
-	private static function registrar_temporada() {
-		$labels = [
-			'name'               => __( 'Temporadas',              'sportcriss-lite' ),
-			'singular_name'      => __( 'Temporada',               'sportcriss-lite' ),
-			'add_new'            => __( 'Añadir temporada',        'sportcriss-lite' ),
-			'add_new_item'       => __( 'Añadir nueva temporada',  'sportcriss-lite' ),
-			'edit_item'          => __( 'Editar temporada',        'sportcriss-lite' ),
-			'new_item'           => __( 'Nueva temporada',         'sportcriss-lite' ),
-			'view_item'          => __( 'Ver temporada',           'sportcriss-lite' ),
-			'search_items'       => __( 'Buscar temporadas',       'sportcriss-lite' ),
-			'not_found'          => __( 'No se encontraron temporadas', 'sportcriss-lite' ),
-			'not_found_in_trash' => __( 'No hay temporadas en la papelera', 'sportcriss-lite' ),
-			'menu_name'          => __( 'Temporadas',              'sportcriss-lite' ),
-		];
-
-		register_post_type( 'scl_temporada', [
-			'labels'        => $labels,
-			'public'        => true,
-			'has_archive'   => false,
-			'hierarchical'  => false,
-			'show_in_rest'  => false,
-			'show_in_menu'  => false,
-			'supports'      => [ 'title' ],
-			'rewrite'       => [ 'slug' => 'temporada', 'with_front' => false ],
-		] );
-	}
 
 	/**
 	 * CPT: scl_partido

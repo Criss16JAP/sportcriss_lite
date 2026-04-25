@@ -76,15 +76,7 @@ class Scl_Meta_Boxes {
 			'default'
 		);
 
-		// scl_temporada
-		add_meta_box(
-			'scl_temporada_datos',
-			__( 'Datos de la temporada', 'sportcriss-lite' ),
-			[ $this, 'render_temporada' ],
-			'scl_temporada',
-			'normal',
-			'high'
-		);
+
 
 		// scl_partido
 		add_meta_box(
@@ -122,11 +114,16 @@ class Scl_Meta_Boxes {
 			'high'
 		);
 
-		// Term meta boxes para scl_fase (hooks separados, ver abajo)
 		add_action( 'scl_fase_add_form_fields',  [ $this, 'render_fase_add_fields' ] );
 		add_action( 'scl_fase_edit_form_fields', [ $this, 'render_fase_edit_fields' ] );
 		add_action( 'created_scl_fase',          [ $this, 'guardar_fase_term_meta' ] );
 		add_action( 'edited_scl_fase',           [ $this, 'guardar_fase_term_meta' ] );
+
+		// Term meta boxes para scl_temporada
+		add_action( 'scl_temporada_add_form_fields',  [ $this, 'temporada_add_fields' ] );
+		add_action( 'scl_temporada_edit_form_fields', [ $this, 'temporada_edit_fields' ] );
+		add_action( 'created_scl_temporada',          [ $this, 'temporada_save_fields' ] );
+		add_action( 'edited_scl_temporada',           [ $this, 'temporada_save_fields' ] );
 
 		// scl_grupo
 		add_meta_box(
@@ -446,82 +443,6 @@ class Scl_Meta_Boxes {
 	}
 
 	// -----------------------------------------------------------------------
-	// Render: scl_temporada
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Renderiza el meta box "Datos de la temporada".
-	 *
-	 * @param WP_Post $post
-	 */
-	public function render_temporada( $post ) {
-		wp_nonce_field( 'scl_guardar_temporada', 'scl_temporada_nonce' );
-
-		$torneos = get_posts( [
-			'post_type'      => 'scl_torneo',
-			'post_status'    => 'publish',
-			'posts_per_page' => -1,
-			'orderby'        => 'title',
-			'order'          => 'ASC',
-		] );
-		$torneo_guardado = (int) get_post_meta( $post->ID, 'scl_temporada_torneo_id', true );
-
-		$estado     = get_post_meta( $post->ID, 'scl_temporada_estado', true ) ?: 'activa';
-		$anio       = get_post_meta( $post->ID, 'scl_temporada_anio',   true ) ?: date( 'Y' );
-		$cache      = get_post_meta( $post->ID, 'scl_temporada_tabla_cache',      true );
-		$updated_at = get_post_meta( $post->ID, 'scl_temporada_tabla_updated_at', true );
-		?>
-		<table class="form-table">
-			<tr>
-				<th><label for="scl_temporada_torneo_id"><?php esc_html_e( 'Torneo al que pertenece', 'sportcriss-lite' ); ?></label></th>
-				<td>
-					<select name="scl_temporada_torneo_id" id="scl_temporada_torneo_id" required>
-						<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
-						<?php foreach ( $torneos as $torneo ) : ?>
-							<option value="<?php echo esc_attr( $torneo->ID ); ?>" <?php selected( $torneo_guardado, $torneo->ID ); ?>>
-								<?php echo esc_html( $torneo->post_title ); ?>
-							</option>
-						<?php endforeach; ?>
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<th><label for="scl_temporada_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label></th>
-				<td>
-					<select id="scl_temporada_estado" name="scl_temporada_estado">
-						<option value="activa"    <?php selected( $estado, 'activa' ); ?>><?php esc_html_e( 'Activa', 'sportcriss-lite' ); ?></option>
-						<option value="finalizada" <?php selected( $estado, 'finalizada' ); ?>><?php esc_html_e( 'Finalizada', 'sportcriss-lite' ); ?></option>
-					</select>
-				</td>
-			</tr>
-			<tr>
-				<th><label for="scl_temporada_anio"><?php esc_html_e( 'Año', 'sportcriss-lite' ); ?></label></th>
-				<td>
-					<input type="number" id="scl_temporada_anio" name="scl_temporada_anio"
-						value="<?php echo esc_attr( $anio ); ?>" min="2000" max="2100" class="small-text">
-				</td>
-			</tr>
-			<?php if ( $updated_at ) : ?>
-			<tr>
-				<th><?php esc_html_e( 'Última actualización de tabla', 'sportcriss-lite' ); ?></th>
-				<td>
-					<input type="text" value="<?php echo esc_attr( $updated_at ); ?>" readonly disabled class="regular-text">
-				</td>
-			</tr>
-			<?php endif; ?>
-			<?php if ( $cache ) : ?>
-			<tr>
-				<th><?php esc_html_e( 'Caché de tabla (generado automáticamente)', 'sportcriss-lite' ); ?></th>
-				<td>
-					<textarea rows="6" class="large-text code" readonly disabled><?php echo esc_textarea( $cache ); ?></textarea>
-				</td>
-			</tr>
-			<?php endif; ?>
-		</table>
-		<?php
-	}
-
-	// -----------------------------------------------------------------------
 	// Render: scl_partido
 	// -----------------------------------------------------------------------
 
@@ -533,29 +454,51 @@ class Scl_Meta_Boxes {
 	public function render_partido_datos( $post ) {
 		wp_nonce_field( 'scl_guardar_partido', 'scl_partido_nonce' );
 
-		$temporada_id = absint( get_post_meta( $post->ID, 'scl_partido_temporada_id', true ) );
+		$torneo_id    = absint( get_post_meta( $post->ID, 'scl_partido_torneo_id', true ) );
+		$grupo_id     = absint( get_post_meta( $post->ID, 'scl_partido_grupo_id', true ) );
 		$fecha        = get_post_meta( $post->ID, 'scl_partido_fecha',   true );
 		$estado       = get_post_meta( $post->ID, 'scl_partido_estado',  true ) ?: 'pendiente';
 
-		// Cargar temporadas del usuario actual ordenadas por torneo
-		$temporadas = $this->get_temporadas_usuario( get_current_user_id() );
+		$terms = wp_get_post_terms( $post->ID, 'scl_temporada' );
+		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) ) ? $terms[0]->term_id : 0;
+
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+
+		$nonce = wp_create_nonce( 'scl_dashboard_nonce' );
 		?>
 		<table class="form-table">
 			<tr>
-				<th><label for="scl_partido_temporada_id"><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label></th>
+				<th><label for="scl_partido_torneo_id"><?php esc_html_e( 'Torneo', 'sportcriss-lite' ); ?></label></th>
 				<td>
-					<select id="scl_partido_temporada_id" name="scl_partido_temporada_id">
-						<option value=""><?php esc_html_e( '— Seleccionar temporada —', 'sportcriss-lite' ); ?></option>
-						<?php foreach ( $temporadas as $torneo_nombre => $lista ) : ?>
-							<optgroup label="<?php echo esc_attr( $torneo_nombre ); ?>">
-								<?php foreach ( $lista as $t ) : ?>
-									<option value="<?php echo esc_attr( $t['id'] ); ?>"
-										<?php selected( $temporada_id, $t['id'] ); ?>>
-										<?php echo esc_html( $t['nombre'] ); ?>
-									</option>
-								<?php endforeach; ?>
-							</optgroup>
+					<select id="scl_partido_torneo_id" name="scl_partido_torneo_id">
+						<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+						<?php foreach ( $torneos as $t ) : ?>
+							<option value="<?php echo esc_attr( $t->ID ); ?>" <?php selected( $torneo_id, $t->ID ); ?>>
+								<?php echo esc_html( $t->post_title ); ?>
+							</option>
 						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_partido_temporada_term_id"><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_partido_temporada_term_id" name="scl_partido_temporada_term_id" data-selected="<?php echo esc_attr( $temporada_term_id ); ?>">
+						<option value="0"><?php esc_html_e( '— Sin temporada —', 'sportcriss-lite' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_partido_grupo_id"><?php esc_html_e( 'Grupo', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_partido_grupo_id" name="scl_partido_grupo_id" data-selected="<?php echo esc_attr( $grupo_id ); ?>">
+						<option value="0"><?php esc_html_e( '— Sin grupo —', 'sportcriss-lite' ); ?></option>
 					</select>
 				</td>
 			</tr>
@@ -576,6 +519,73 @@ class Scl_Meta_Boxes {
 				</td>
 			</tr>
 		</table>
+
+		<script>
+		jQuery(document).ready(function($) {
+			var nonce = '<?php echo esc_js( $nonce ); ?>';
+
+			var $torneoSelect    = $('#scl_partido_torneo_id');
+			var $temporadaSelect = $('#scl_partido_temporada_term_id');
+			var $grupoSelect     = $('#scl_partido_grupo_id');
+
+			var temporadaGuardada = parseInt($temporadaSelect.data('selected')) || 0;
+			var grupoGuardado     = parseInt($grupoSelect.data('selected')) || 0;
+
+			function cargarTemporadas(torneoId) {
+				if (!torneoId || torneoId == '0') {
+					$temporadaSelect.html('<option value="0">— Sin temporada —</option>');
+					return;
+				}
+				$.post(ajaxurl, {
+					action: 'scl_get_temporadas_por_torneo',
+					torneo_id: torneoId,
+					nonce: nonce
+				}, function(res) {
+					if (res.success) {
+						var html = '<option value="0">— Sin temporada —</option>';
+						res.data.forEach(function(t) {
+							var sel = (t.term_id == temporadaGuardada) ? ' selected' : '';
+							html += '<option value="' + t.term_id + '"' + sel + '>' + t.name + '</option>';
+						});
+						$temporadaSelect.html(html);
+					}
+				});
+			}
+
+			function cargarGrupos(torneoId) {
+				if (!torneoId || torneoId == '0') {
+					$grupoSelect.html('<option value="0">— Sin grupo —</option>');
+					return;
+				}
+				$.post(ajaxurl, {
+					action: 'scl_get_grupos_por_torneo',
+					torneo_id: torneoId,
+					nonce: nonce
+				}, function(res) {
+					if (res.success) {
+						var html = '<option value="0">— Sin grupo —</option>';
+						res.data.forEach(function(g) {
+							var sel = (g.ID == grupoGuardado) ? ' selected' : '';
+							html += '<option value="' + g.ID + '"' + sel + '>' + g.post_title + '</option>';
+						});
+						$grupoSelect.html(html);
+					}
+				});
+			}
+
+			$torneoSelect.on('change', function() {
+				var torneoId = $(this).val();
+				cargarTemporadas(torneoId);
+				cargarGrupos(torneoId);
+			});
+
+			// Disparar al cargar para recuperar valores guardados
+			if ($torneoSelect.val() !== '0') {
+				cargarTemporadas($torneoSelect.val());
+				cargarGrupos($torneoSelect.val());
+			}
+		});
+		</script>
 		<?php
 	}
 
@@ -650,18 +660,8 @@ class Scl_Meta_Boxes {
 	public function render_partido_clasificacion( $post ) {
 		$llave_id  = get_post_meta( $post->ID, 'scl_partido_llave_id',  true );
 		$es_vuelta = get_post_meta( $post->ID, 'scl_partido_es_vuelta', true );
-		$grupo_guardado = (int) get_post_meta( $post->ID, 'scl_partido_grupo_id', true );
-		$nonce = wp_create_nonce( 'scl_dashboard_nonce' );
 		?>
 		<table class="form-table">
-			<tr>
-				<th><?php esc_html_e( 'Grupo', 'sportcriss-lite' ); ?></th>
-				<td>
-					<select id="scl_partido_grupo_id" name="scl_partido_grupo_id" data-selected="<?php echo esc_attr( $grupo_guardado ); ?>">
-						<option value="0"><?php esc_html_e( '— Sin grupo —', 'sportcriss-lite' ); ?></option>
-					</select>
-				</td>
-			</tr>
 			<tr>
 				<th><?php esc_html_e( 'ID de llave asociada', 'sportcriss-lite' ); ?></th>
 				<td>
@@ -680,52 +680,6 @@ class Scl_Meta_Boxes {
 				</td>
 			</tr>
 		</table>
-		<script>
-		jQuery(document).ready(function($) {
-			var $temporadaSelect = $('#scl_partido_temporada_id');
-			var $grupoSelect     = $('#scl_partido_grupo_id');
-			var grupoGuardado    = parseInt($grupoSelect.data('selected')) || 0;
-
-			function cargarGrupos(temporadaId) {
-				if (!temporadaId) {
-					$grupoSelect.html('<option value="0">— Sin grupo —</option>');
-					return;
-				}
-				$.ajax({
-					url:  ajaxurl,
-					type: 'POST',
-					data: {
-						action:      'scl_get_grupos_por_torneo',
-						temporada_id: temporadaId,
-						nonce:       '<?php echo esc_js( $nonce ); ?>'
-					},
-					success: function(response) {
-						if (response.success && response.data) {
-							var html = '<option value="0">— Sin grupo —</option>';
-							response.data.forEach(function(grupo) {
-								var sel = (grupo.ID == grupoGuardado) ? ' selected' : '';
-								html += '<option value="' + grupo.ID + '"' + sel + '>'
-									 + grupo.post_title + '</option>';
-							});
-							$grupoSelect.html(html);
-						} else {
-							$grupoSelect.html('<option value="0">— Sin grupo —</option>');
-						}
-					},
-					error: function() {
-						$grupoSelect.html('<option value="0">— Error cargando grupos —</option>');
-					}
-				});
-			}
-
-			$temporadaSelect.on('change', function() {
-				cargarGrupos($(this).val());
-			});
-
-			// Disparar al cargar para recuperar el valor guardado
-			cargarGrupos($temporadaSelect.val());
-		});
-		</script>
 		<?php
 	}
 
@@ -741,42 +695,40 @@ class Scl_Meta_Boxes {
 	public function render_llave( $post ) {
 		wp_nonce_field( 'scl_guardar_llave', 'scl_llave_nonce' );
 
-		$temporada_id      = absint( get_post_meta( $post->ID, 'scl_llave_temporada_id',      true ) );
-		$fase_term_id      = absint( get_post_meta( $post->ID, 'scl_llave_fase_term_id',      true ) );
-		$partido_ida_id    = get_post_meta( $post->ID, 'scl_llave_partido_ida_id',    true );
-		$partido_vuelta_id = get_post_meta( $post->ID, 'scl_llave_partido_vuelta_id', true );
-		$es_doble          = get_post_meta( $post->ID, 'scl_llave_es_doble',          true );
-		$ganador_id        = absint( get_post_meta( $post->ID, 'scl_llave_ganador_id',        true ) );
-		$penales_local     = get_post_meta( $post->ID, 'scl_llave_penales_local',     true );
-		$penales_visita    = get_post_meta( $post->ID, 'scl_llave_penales_visita',    true );
-		$estado            = get_post_meta( $post->ID, 'scl_llave_estado',            true ) ?: 'en_curso';
+		$torneo_id         = absint( get_post_meta( $post->ID, 'scl_llave_torneo_id',         true ) );
 
-		$temporadas    = $this->get_temporadas_usuario( get_current_user_id() );
-		$fases_playoff = $this->get_fases_playoff();
+		$terms = wp_get_post_terms( $post->ID, 'scl_temporada' );
+		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) ) ? $terms[0]->term_id : 0;
 
-		// Equipos involucrados en la llave (para selector de ganador)
-		$equipo_local_id  = 0;
-		$equipo_visita_id = 0;
-		if ( $partido_ida_id ) {
-			$equipo_local_id  = absint( get_post_meta( absint( $partido_ida_id ), 'scl_partido_equipo_local_id',  true ) );
-			$equipo_visita_id = absint( get_post_meta( absint( $partido_ida_id ), 'scl_partido_equipo_visita_id', true ) );
-		}
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+
+		$nonce = wp_create_nonce( 'scl_dashboard_nonce' );
 		?>
 		<table class="form-table">
 			<tr>
-				<th><label for="scl_llave_temporada_id"><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label></th>
+				<th><label for="scl_llave_torneo_id"><?php esc_html_e( 'Torneo', 'sportcriss-lite' ); ?></label></th>
 				<td>
-					<select id="scl_llave_temporada_id" name="scl_llave_temporada_id">
-						<option value=""><?php esc_html_e( '— Seleccionar temporada —', 'sportcriss-lite' ); ?></option>
-						<?php foreach ( $temporadas as $torneo_nombre => $lista ) : ?>
-							<optgroup label="<?php echo esc_attr( $torneo_nombre ); ?>">
-								<?php foreach ( $lista as $t ) : ?>
-									<option value="<?php echo esc_attr( $t['id'] ); ?>" <?php selected( $temporada_id, $t['id'] ); ?>>
-										<?php echo esc_html( $t['nombre'] ); ?>
-									</option>
-								<?php endforeach; ?>
-							</optgroup>
+					<select id="scl_llave_torneo_id" name="scl_llave_torneo_id">
+						<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+						<?php foreach ( $torneos as $t ) : ?>
+							<option value="<?php echo esc_attr( $t->ID ); ?>" <?php selected( $torneo_id, $t->ID ); ?>>
+								<?php echo esc_html( $t->post_title ); ?>
+							</option>
 						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_llave_temporada_term_id"><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_llave_temporada_term_id" name="scl_llave_temporada_term_id" data-selected="<?php echo esc_attr( $temporada_term_id ); ?>">
+						<option value="0"><?php esc_html_e( '— Sin temporada —', 'sportcriss-lite' ); ?></option>
 					</select>
 				</td>
 			</tr>
@@ -876,6 +828,47 @@ class Scl_Meta_Boxes {
 				</td>
 			</tr>
 		</table>
+		<script>
+		jQuery(document).ready(function($) {
+			var nonce = '<?php echo esc_js( $nonce ); ?>';
+
+			var $torneoSelect    = $('#scl_llave_torneo_id');
+			var $temporadaSelect = $('#scl_llave_temporada_term_id');
+
+			var temporadaGuardada = parseInt($temporadaSelect.data('selected')) || 0;
+
+			function cargarTemporadas(torneoId) {
+				if (!torneoId || torneoId == '0') {
+					$temporadaSelect.html('<option value="0">— Sin temporada —</option>');
+					return;
+				}
+				$.post(ajaxurl, {
+					action: 'scl_get_temporadas_por_torneo',
+					torneo_id: torneoId,
+					nonce: nonce
+				}, function(res) {
+					if (res.success) {
+						var html = '<option value="0">— Sin temporada —</option>';
+						res.data.forEach(function(t) {
+							var sel = (t.term_id == temporadaGuardada) ? ' selected' : '';
+							html += '<option value="' + t.term_id + '"' + sel + '>' + t.name + '</option>';
+						});
+						$temporadaSelect.html(html);
+					}
+				});
+			}
+
+			$torneoSelect.on('change', function() {
+				var torneoId = $(this).val();
+				cargarTemporadas(torneoId);
+			});
+
+			// Disparar al cargar para recuperar valores guardados
+			if ($torneoSelect.val() !== '0') {
+				cargarTemporadas($torneoSelect.val());
+			}
+		});
+		</script>
 		<?php
 	}
 
@@ -964,6 +957,113 @@ class Scl_Meta_Boxes {
 	}
 
 	// -----------------------------------------------------------------------
+	// Render: term meta boxes para scl_temporada
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Campos en el formulario de CREACIÓN de término scl_temporada.
+	 */
+	public function temporada_add_fields( string $taxonomy ): void {
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+		wp_nonce_field( 'scl_guardar_term_temporada', 'scl_temporada_nonce' );
+		?>
+		<div class="form-field">
+			<label for="scl_temporada_torneo_id"><?php esc_html_e( 'Torneo al que pertenece', 'sportcriss-lite' ); ?></label>
+			<select name="scl_temporada_torneo_id" id="scl_temporada_torneo_id">
+				<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+				<?php foreach ( $torneos as $t ): ?>
+					<option value="<?php echo esc_attr( $t->ID ); ?>">
+						<?php echo esc_html( $t->post_title ); ?>
+					</option>
+				<?php endforeach; ?>
+			</select>
+		</div>
+		<div class="form-field">
+			<label for="scl_temporada_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label>
+			<select name="scl_temporada_estado" id="scl_temporada_estado">
+				<option value="activa"><?php esc_html_e( 'Activa', 'sportcriss-lite' ); ?></option>
+				<option value="finalizada"><?php esc_html_e( 'Finalizada', 'sportcriss-lite' ); ?></option>
+			</select>
+		</div>
+		<div class="form-field">
+			<label for="scl_temporada_anio"><?php esc_html_e( 'Año', 'sportcriss-lite' ); ?></label>
+			<input type="number" name="scl_temporada_anio" id="scl_temporada_anio"
+				value="<?php echo esc_attr( date( 'Y' ) ); ?>">
+		</div>
+		<?php
+	}
+
+	/**
+	 * Campos en el formulario de EDICIÓN de término scl_temporada.
+	 */
+	public function temporada_edit_fields( $term ) {
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+		wp_nonce_field( 'scl_guardar_term_temporada', 'scl_temporada_nonce' );
+
+		$torneo_id = get_term_meta( $term->term_id, 'scl_temporada_torneo_id', true );
+		$estado    = get_term_meta( $term->term_id, 'scl_temporada_estado', true ) ?: 'activa';
+		$anio      = get_term_meta( $term->term_id, 'scl_temporada_anio', true ) ?: date('Y');
+		?>
+		<tr class="form-field">
+			<th><label for="scl_temporada_torneo_id"><?php esc_html_e( 'Torneo al que pertenece', 'sportcriss-lite' ); ?></label></th>
+			<td>
+				<select name="scl_temporada_torneo_id" id="scl_temporada_torneo_id">
+					<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+					<?php foreach ( $torneos as $t ): ?>
+						<option value="<?php echo esc_attr( $t->ID ); ?>" <?php selected( $torneo_id, $t->ID ); ?>>
+							<?php echo esc_html( $t->post_title ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</td>
+		</tr>
+		<tr class="form-field">
+			<th><label for="scl_temporada_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label></th>
+			<td>
+				<select name="scl_temporada_estado" id="scl_temporada_estado">
+					<option value="activa" <?php selected( $estado, 'activa' ); ?>><?php esc_html_e( 'Activa', 'sportcriss-lite' ); ?></option>
+					<option value="finalizada" <?php selected( $estado, 'finalizada' ); ?>><?php esc_html_e( 'Finalizada', 'sportcriss-lite' ); ?></option>
+				</select>
+			</td>
+		</tr>
+		<tr class="form-field">
+			<th><label for="scl_temporada_anio"><?php esc_html_e( 'Año', 'sportcriss-lite' ); ?></label></th>
+			<td>
+				<input type="number" name="scl_temporada_anio" id="scl_temporada_anio"
+					value="<?php echo esc_attr( $anio ); ?>">
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * Guarda los term metas de scl_temporada.
+	 */
+	public function temporada_save_fields( int $term_id ): void {
+		if ( ! isset( $_POST['scl_temporada_nonce'] ) ) return;
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_temporada_nonce'] ) ), 'scl_guardar_term_temporada' ) ) return;
+
+		update_term_meta( $term_id, 'scl_temporada_torneo_id',
+			absint( $_POST['scl_temporada_torneo_id'] ?? 0 ) );
+		update_term_meta( $term_id, 'scl_temporada_estado',
+			sanitize_key( wp_unslash( $_POST['scl_temporada_estado'] ?? 'activa' ) ) );
+		update_term_meta( $term_id, 'scl_temporada_anio',
+			absint( $_POST['scl_temporada_anio'] ?? date( 'Y' ) ) );
+	}
+
+	// -----------------------------------------------------------------------
 	// Render: scl_grupo
 	// -----------------------------------------------------------------------
 
@@ -1033,9 +1133,6 @@ class Scl_Meta_Boxes {
 				break;
 			case 'scl_torneo':
 				$this->guardar_torneo( $post_id );
-				break;
-			case 'scl_temporada':
-				$this->guardar_temporada( $post_id );
 				break;
 			case 'scl_partido':
 				$this->guardar_partido( $post_id, $post );
@@ -1120,29 +1217,6 @@ class Scl_Meta_Boxes {
 		update_post_meta( $post_id, 'scl_torneo_fondo', $fondo );
 	}
 
-	/**
-	 * Guarda los metas de scl_temporada.
-	 *
-	 * @param int $post_id
-	 */
-	private function guardar_temporada( $post_id ) {
-		if ( ! isset( $_POST['scl_temporada_nonce'] ) ) return;
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_temporada_nonce'] ) ), 'scl_guardar_temporada' ) ) return;
-
-		$estados_validos = [ 'activa', 'finalizada' ];
-		$estado = isset( $_POST['scl_temporada_estado'] ) ? sanitize_text_field( wp_unslash( $_POST['scl_temporada_estado'] ) ) : 'activa';
-		if ( ! in_array( $estado, $estados_validos, true ) ) {
-			$estado = 'activa';
-		}
-
-		$anio = isset( $_POST['scl_temporada_anio'] ) ? absint( $_POST['scl_temporada_anio'] ) : absint( date( 'Y' ) );
-
-		$torneo_id = absint( $_POST['scl_temporada_torneo_id'] ?? 0 );
-
-		update_post_meta( $post_id, 'scl_temporada_torneo_id', $torneo_id );
-		update_post_meta( $post_id, 'scl_temporada_estado', $estado );
-		update_post_meta( $post_id, 'scl_temporada_anio',   $anio );
-		// tabla_cache y tabla_updated_at son readonly: los gestiona el motor.
 	}
 
 	/**
@@ -1158,7 +1232,14 @@ class Scl_Meta_Boxes {
 		if ( ! isset( $_POST['scl_partido_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_partido_nonce'] ) ), 'scl_guardar_partido' ) ) return;
 
-		$temporada_id     = isset( $_POST['scl_partido_temporada_id'] )     ? absint( $_POST['scl_partido_temporada_id'] )     : 0;
+		$temporada_term_id = absint( $_POST['scl_partido_temporada_term_id'] ?? 0 );
+		if ( $temporada_term_id ) {
+			wp_set_post_terms( $post_id, [ $temporada_term_id ], 'scl_temporada' );
+		} else {
+			wp_set_post_terms( $post_id, [], 'scl_temporada' );
+		}
+
+		$torneo_id        = isset( $_POST['scl_partido_torneo_id'] )        ? absint( $_POST['scl_partido_torneo_id'] )        : 0;
 		$equipo_local_id  = isset( $_POST['scl_partido_equipo_local_id'] )  ? absint( $_POST['scl_partido_equipo_local_id'] )  : 0;
 		$equipo_visita_id = isset( $_POST['scl_partido_equipo_visita_id'] ) ? absint( $_POST['scl_partido_equipo_visita_id'] ) : 0;
 		$es_vuelta        = isset( $_POST['scl_partido_es_vuelta'] )        ? '1' : '0';
@@ -1192,7 +1273,7 @@ class Scl_Meta_Boxes {
 				? absint( $_POST['scl_partido_goles_visita'] ) : '';
 		}
 
-		update_post_meta( $post_id, 'scl_partido_temporada_id',     $temporada_id );
+		update_post_meta( $post_id, 'scl_partido_torneo_id',        $torneo_id );
 		update_post_meta( $post_id, 'scl_partido_equipo_local_id',  $equipo_local_id );
 		update_post_meta( $post_id, 'scl_partido_equipo_visita_id', $equipo_visita_id );
 		update_post_meta( $post_id, 'scl_partido_goles_local',      $goles_local );
@@ -1217,18 +1298,20 @@ class Scl_Meta_Boxes {
 	}
 
 	private function generar_titulo_partido( int $post_id ): string {
-		$temporada_id  = (int) get_post_meta( $post_id, 'scl_partido_temporada_id', true );
+		$torneo_id     = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
 		$local_id      = (int) get_post_meta( $post_id, 'scl_partido_equipo_local_id', true );
 		$visita_id     = (int) get_post_meta( $post_id, 'scl_partido_equipo_visita_id', true );
 
-		if ( ! $temporada_id || ! $local_id || ! $visita_id ) return '';
+		$terms = wp_get_post_terms( $post_id, 'scl_temporada' );
+		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) ) ? $terms[0]->term_id : 0;
 
-		$temporada = get_post( $temporada_id );
-		if ( ! $temporada ) return '';
+		if ( ! $temporada_term_id || ! $local_id || ! $visita_id ) return '';
 
-		// Obtener torneo via meta
-		$torneo_id = (int) get_post_meta( $temporada_id, 'scl_temporada_torneo_id', true );
-		$siglas    = $torneo_id
+		$temporada = get_term( $temporada_term_id, 'scl_temporada' );
+		if ( ! $temporada || is_wp_error( $temporada ) ) return '';
+
+		// Obtener siglas del torneo
+		$siglas = $torneo_id
 			? strtoupper( get_post_meta( $torneo_id, 'scl_torneo_siglas', true ) )
 			: '';
 		if ( ! $siglas && $torneo_id ) {
@@ -1246,7 +1329,7 @@ class Scl_Meta_Boxes {
 
 		$prefijo = $siglas ? "[{$siglas}]" : '';
 
-		return trim( "{$prefijo} · {$local} vs {$visita}{$jornada} · {$temporada->post_title}" );
+		return trim( "{$prefijo} · {$local} vs {$visita}{$jornada} · {$temporada->name}" );
 	}
 
 	/**
@@ -1258,7 +1341,14 @@ class Scl_Meta_Boxes {
 		if ( ! isset( $_POST['scl_llave_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_llave_nonce'] ) ), 'scl_guardar_llave' ) ) return;
 
-		$temporada_id  = isset( $_POST['scl_llave_temporada_id'] )  ? absint( $_POST['scl_llave_temporada_id'] )  : 0;
+		$temporada_term_id = absint( $_POST['scl_llave_temporada_term_id'] ?? 0 );
+		if ( $temporada_term_id ) {
+			wp_set_post_terms( $post_id, [ $temporada_term_id ], 'scl_temporada' );
+		} else {
+			wp_set_post_terms( $post_id, [], 'scl_temporada' );
+		}
+
+		$torneo_id     = isset( $_POST['scl_llave_torneo_id'] )     ? absint( $_POST['scl_llave_torneo_id'] )     : 0;
 		$fase_term_id  = isset( $_POST['scl_llave_fase_term_id'] )  ? absint( $_POST['scl_llave_fase_term_id'] )  : 0;
 		$es_doble      = isset( $_POST['scl_llave_es_doble'] )      ? '1' : '0';
 		$ganador_id    = isset( $_POST['scl_llave_ganador_id'] )    ? absint( $_POST['scl_llave_ganador_id'] )    : 0;
@@ -1273,8 +1363,8 @@ class Scl_Meta_Boxes {
 			$estado = 'en_curso';
 		}
 
-		update_post_meta( $post_id, 'scl_llave_temporada_id',  $temporada_id );
-		update_post_meta( $post_id, 'scl_llave_fase_term_id',  $fase_term_id );
+		update_post_meta( $post_id, 'scl_llave_torneo_id',         $torneo_id );
+		update_post_meta( $post_id, 'scl_llave_fase_term_id',      $fase_term_id );
 		update_post_meta( $post_id, 'scl_llave_es_doble',      $es_doble );
 		update_post_meta( $post_id, 'scl_llave_ganador_id',    $ganador_id );
 		update_post_meta( $post_id, 'scl_llave_penales_local', $penales_local );

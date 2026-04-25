@@ -25,26 +25,20 @@ class Scl_Ajax {
 	 */
 	public function registrar_handlers( $loader ) {
 		$loader->add_action( 'wp_ajax_scl_get_grupos_por_torneo', [ $this, 'get_grupos_por_torneo' ] );
+		$loader->add_action( 'wp_ajax_scl_get_temporadas_por_torneo', [ $this, 'get_temporadas_por_torneo' ] );
+		$loader->add_action( 'wp_ajax_scl_crear_torneo', [ $this, 'ajax_crear_torneo' ] );
+		$loader->add_action( 'wp_ajax_scl_editar_torneo', [ $this, 'ajax_editar_torneo' ] );
+		$loader->add_action( 'wp_ajax_scl_crear_temporada', [ $this, 'ajax_crear_temporada' ] );
+		$loader->add_action( 'wp_ajax_scl_editar_temporada', [ $this, 'ajax_editar_temporada' ] );
 		$loader->add_action( 'wp_ajax_scl_confirmar_ganador_llave', [ $this, 'ajax_confirmar_ganador_llave' ] );
 	}
 
 	public function get_grupos_por_torneo(): void {
 		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
 
-		$temporada_id = absint( $_POST['temporada_id'] ?? 0 );
-		if ( ! $temporada_id ) {
-			wp_send_json_error( 'temporada_id requerido' );
-		}
-
-		// Paso intermedio: obtener el torneo padre de la temporada
-		$temporada = get_post( $temporada_id );
-		if ( ! $temporada || $temporada->post_type !== 'scl_temporada' ) {
-			wp_send_json_error( 'Temporada no válida' );
-		}
-
-		$torneo_id = (int) get_post_meta( $temporada_id, 'scl_temporada_torneo_id', true );
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
 		if ( ! $torneo_id ) {
-			wp_send_json_error( 'La temporada no tiene torneo asignado' );
+			wp_send_json_error( 'torneo_id requerido' );
 		}
 
 		// Buscar grupos cuyo post_parent sea el torneo
@@ -66,6 +60,169 @@ class Scl_Ajax {
 		}, $grupos );
 
 		wp_send_json_success( $data );
+	}
+
+	public function get_temporadas_por_torneo(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
+		if ( ! $torneo_id ) {
+			wp_send_json_error( 'torneo_id requerido' );
+		}
+
+		$terms = get_terms( [
+			'taxonomy'   => 'scl_temporada',
+			'hide_empty' => false,
+			'meta_query' => [
+				[
+					'key'     => 'scl_temporada_torneo_id',
+					'value'   => $torneo_id,
+					'compare' => '=',
+				]
+			],
+		] );
+
+		if ( is_wp_error( $terms ) ) {
+			wp_send_json_error( 'Error obteniendo temporadas' );
+		}
+
+		$data = array_map( function( $term ) {
+			return [
+				'term_id' => $term->term_id,
+				'name'    => $term->name,
+			];
+		}, $terms );
+
+		wp_send_json_success( $data );
+	}
+
+	public function ajax_crear_torneo() {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! current_user_can( 'edit_posts' ) ) wp_send_json_error( 'Sin permisos' );
+
+		$titulo = sanitize_text_field( $_POST['titulo'] ?? '' );
+		if ( ! $titulo ) wp_send_json_error( 'El título es requerido' );
+
+		$post_id = wp_insert_post( [
+			'post_type'   => 'scl_torneo',
+			'post_title'  => $titulo,
+			'post_status' => 'publish',
+			'post_author' => get_current_user_id()
+		] );
+
+		if ( is_wp_error( $post_id ) ) {
+			wp_send_json_error( 'Error al crear el torneo' );
+		}
+
+		$this->guardar_metas_torneo( $post_id );
+
+		wp_send_json_success( [ 'id' => $post_id, 'mensaje' => 'Torneo creado con éxito' ] );
+	}
+
+	public function ajax_editar_torneo() {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
+		$post = get_post( $torneo_id );
+		
+		if ( ! $post || 'scl_torneo' !== $post->post_type || $post->post_author != get_current_user_id() ) {
+			wp_send_json_error( 'Torneo no válido' );
+		}
+
+		$titulo = sanitize_text_field( $_POST['titulo'] ?? '' );
+		if ( ! $titulo ) wp_send_json_error( 'El título es requerido' );
+
+		wp_update_post( [
+			'ID'         => $torneo_id,
+			'post_title' => $titulo
+		] );
+
+		$this->guardar_metas_torneo( $torneo_id );
+
+		wp_send_json_success( [ 'id' => $torneo_id, 'mensaje' => 'Torneo actualizado con éxito' ] );
+	}
+
+	private function guardar_metas_torneo( $post_id ) {
+		update_post_meta( $post_id, 'scl_torneo_puntos_victoria', absint( $_POST['puntos_victoria'] ?? 3 ) );
+		update_post_meta( $post_id, 'scl_torneo_puntos_empate', absint( $_POST['puntos_empate'] ?? 1 ) );
+		update_post_meta( $post_id, 'scl_torneo_puntos_derrota', absint( $_POST['puntos_derrota'] ?? 0 ) );
+		
+		$color_primario = sanitize_hex_color( $_POST['color_primario'] ?? '#1a2b3c' );
+		if ( $color_primario ) update_post_meta( $post_id, 'scl_torneo_color_primario', $color_primario );
+		
+		$color_secundario = sanitize_hex_color( $_POST['color_secundario'] ?? '#ffffff' );
+		if ( $color_secundario ) update_post_meta( $post_id, 'scl_torneo_color_secundario', $color_secundario );
+	}
+
+	public function ajax_crear_temporada() {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! current_user_can( 'edit_posts' ) ) wp_send_json_error( 'Sin permisos' );
+
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
+		$torneo = get_post( $torneo_id );
+		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type || $torneo->post_author != get_current_user_id() ) {
+			wp_send_json_error( 'Torneo no válido' );
+		}
+
+		$titulo = sanitize_text_field( $_POST['titulo'] ?? '' );
+		if ( ! $titulo ) wp_send_json_error( 'El título es requerido' );
+
+		$term = wp_insert_term( $titulo, 'scl_temporada' );
+		if ( is_wp_error( $term ) ) {
+			wp_send_json_error( 'Error al crear la temporada: ' . $term->get_error_message() );
+		}
+
+		$term_id = $term['term_id'];
+
+		$this->guardar_metas_temporada( $term_id, $torneo_id );
+
+		wp_send_json_success( [ 'id' => $term_id, 'mensaje' => 'Temporada creada con éxito' ] );
+	}
+
+	public function ajax_editar_temporada() {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
+		$torneo = get_post( $torneo_id );
+		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type || $torneo->post_author != get_current_user_id() ) {
+			wp_send_json_error( 'Torneo no válido' );
+		}
+
+		$term_id = absint( $_POST['temporada_id'] ?? 0 );
+		$term = get_term( $term_id, 'scl_temporada' );
+		if ( ! $term || is_wp_error( $term ) ) {
+			wp_send_json_error( 'Temporada no válida' );
+		}
+
+		$term_torneo_id = (int) get_term_meta( $term_id, 'scl_temporada_torneo_id', true );
+		if ( $term_torneo_id !== $torneo_id ) {
+			wp_send_json_error( 'La temporada no pertenece al torneo' );
+		}
+
+		$titulo = sanitize_text_field( $_POST['titulo'] ?? '' );
+		if ( ! $titulo ) wp_send_json_error( 'El título es requerido' );
+
+		wp_update_term( $term_id, 'scl_temporada', [
+			'name' => $titulo
+		] );
+
+		$this->guardar_metas_temporada( $term_id, $torneo_id );
+
+		wp_send_json_success( [ 'id' => $term_id, 'mensaje' => 'Temporada actualizada con éxito' ] );
+	}
+
+	private function guardar_metas_temporada( $term_id, $torneo_id ) {
+		update_term_meta( $term_id, 'scl_temporada_torneo_id', $torneo_id );
+
+		$estados_validos = [ 'activa', 'finalizada' ];
+		$estado = isset( $_POST['estado'] ) ? sanitize_key( wp_unslash( $_POST['estado'] ) ) : 'activa';
+		if ( ! in_array( $estado, $estados_validos, true ) ) {
+			$estado = 'activa';
+		}
+		update_term_meta( $term_id, 'scl_temporada_estado', $estado );
+
+		$anio = isset( $_POST['anio'] ) ? absint( $_POST['anio'] ) : absint( date( 'Y' ) );
+		update_term_meta( $term_id, 'scl_temporada_anio', $anio );
 	}
 
 	/**

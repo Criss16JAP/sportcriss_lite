@@ -26,14 +26,18 @@ $partidos_pendientes = new WP_Query( [
 	'posts_per_page' => -1,
 ] );
 
-// Temporadas de los torneos
-$temporadas_activas = new WP_Query( [
-	'post_type'      => 'scl_temporada',
-	'author'         => get_current_user_id(),
-	'post_status'    => 'publish',
-	'meta_query'     => [ [ 'key' => 'scl_temporada_estado', 'value' => 'activa' ] ],
-	'posts_per_page' => -1,
+// Temporadas activas
+$temporadas_activas = get_terms( [
+	'taxonomy'   => 'scl_temporada',
+	'hide_empty' => false,
+	'meta_query' => [
+		[
+			'key'   => 'scl_temporada_estado',
+			'value' => 'activa'
+		]
+	]
 ] );
+$num_temporadas_activas = is_wp_error( $temporadas_activas ) ? 0 : count( $temporadas_activas );
 
 $home_url = home_url( '/mi-panel/' );
 ?>
@@ -51,7 +55,7 @@ $home_url = home_url( '/mi-panel/' );
 			<div class="scl-card__label"><?php esc_html_e( 'Partidos pendientes', 'sportcriss-lite' ); ?></div>
 		</div>
 		<div class="scl-card">
-			<div class="scl-card__value"><?php echo esc_html( $temporadas_activas->found_posts ); ?></div>
+			<div class="scl-card__value"><?php echo esc_html( $num_temporadas_activas ); ?></div>
 			<div class="scl-card__label"><?php esc_html_e( 'Temporadas activas', 'sportcriss-lite' ); ?></div>
 		</div>
 	</div>

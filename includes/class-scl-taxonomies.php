@@ -33,7 +33,9 @@ class Scl_Taxonomies {
 	public static function registrar() {
 		self::registrar_fase();
 		self::registrar_jornada();
+		self::registrar_temporada();
 		self::registrar_term_metas_fase();
+		self::registrar_term_metas_temporada();
 	}
 
 	// -----------------------------------------------------------------------
@@ -106,6 +108,37 @@ class Scl_Taxonomies {
 		] );
 	}
 
+	/**
+	 * Taxonomía: scl_temporada
+	 *
+	 * Temporadas de un torneo. Aplicada a partidos.
+	 */
+	private static function registrar_temporada() {
+		$labels = [
+			'name'              => __( 'Temporadas',           'sportcriss-lite' ),
+			'singular_name'     => __( 'Temporada',            'sportcriss-lite' ),
+			'search_items'      => __( 'Buscar temporadas',    'sportcriss-lite' ),
+			'all_items'         => __( 'Todas las temporadas', 'sportcriss-lite' ),
+			'edit_item'         => __( 'Editar temporada',     'sportcriss-lite' ),
+			'update_item'       => __( 'Actualizar temporada', 'sportcriss-lite' ),
+			'add_new_item'      => __( 'Añadir nueva temporada', 'sportcriss-lite' ),
+			'new_item_name'     => __( 'Nombre de la nueva temporada', 'sportcriss-lite' ),
+			'menu_name'         => __( 'Temporadas',           'sportcriss-lite' ),
+			'not_found'         => __( 'No se encontraron temporadas', 'sportcriss-lite' ),
+		];
+
+		register_taxonomy( 'scl_temporada', [ 'scl_partido' ], [
+			'labels'            => $labels,
+			'hierarchical'      => false,
+			'public'            => true,
+			'show_ui'           => true,
+			'show_in_menu'      => false,
+			'show_in_rest'      => false,
+			'show_admin_column' => true,
+			'rewrite'           => [ 'slug' => 'temporada', 'with_front' => false ],
+		] );
+	}
+
 
 
 	// -----------------------------------------------------------------------
@@ -143,6 +176,29 @@ class Scl_Taxonomies {
 			'default'           => false,
 			'sanitize_callback' => 'rest_sanitize_boolean',
 			'show_in_rest'      => false,
+		] );
+	}
+
+	/**
+	 * Registra los term metas de la taxonomía scl_temporada.
+	 */
+	private static function registrar_term_metas_temporada() {
+		register_term_meta( 'scl_temporada', 'scl_temporada_torneo_id', [
+			'type'       => 'integer',
+			'single'     => true,
+			'default'    => 0,
+		] );
+
+		register_term_meta( 'scl_temporada', 'scl_temporada_estado', [
+			'type'       => 'string',
+			'single'     => true,
+			'default'    => 'activa',
+		] );
+
+		register_term_meta( 'scl_temporada', 'scl_temporada_anio', [
+			'type'       => 'integer',
+			'single'     => true,
+			'default'    => (int) date( 'Y' ),
 		] );
 	}
 

@@ -91,6 +91,11 @@ class Scl_Dashboard {
 		];
 
 		$template = $templates[ $ruta ] ?? $templates['home'];
+		
+		if ( in_array( $accion, [ 'nuevo', 'editar' ], true ) ) {
+			$template = str_replace( '-lista.php', '-form.php', $template );
+		}
+
 		$path = SCL_PATH . 'templates/' . $template;
 
 		if ( file_exists( $path ) ) {

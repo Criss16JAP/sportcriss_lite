@@ -42,25 +42,23 @@ class Scl_Engine {
 			return;
 		}
 
-		$temporada_id = (int) get_post_meta( $post_id, 'scl_partido_temporada_id', true );
-		if ( $temporada_id ) {
-			$this->recalcular_tabla( $temporada_id );
+		$torneo_id = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
+		$terms = wp_get_post_terms( $post_id, 'scl_temporada' );
+		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) ) ? $terms[0]->term_id : 0;
+
+		if ( $torneo_id && $temporada_term_id ) {
+			$this->recalcular_tabla( $torneo_id, $temporada_term_id );
 		}
 	}
 
 	/**
-	 * Recalcula la tabla de posiciones de una temporada.
+	 * Recalcula la tabla de posiciones de una temporada en un torneo.
 	 *
-	 * @param int $temporada_id
+	 * @param int $torneo_id
+	 * @param int $temporada_term_id
 	 */
-	public function recalcular_tabla( int $temporada_id ): void {
-		$temporada = get_post( $temporada_id );
-		if ( ! $temporada || 'scl_temporada' !== $temporada->post_type ) {
-			return;
-		}
-
-		$torneo_id = (int) get_post_meta( $temporada_id, 'scl_temporada_torneo_id', true );
-		if ( ! $torneo_id ) {
+	public function recalcular_tabla( int $torneo_id, int $temporada_term_id ): void {
+		if ( ! $torneo_id || ! $temporada_term_id ) {
 			return;
 		}
 
@@ -80,8 +78,8 @@ class Scl_Engine {
 			'posts_per_page' => -1,
 			'meta_query'     => [
 				[
-					'key'   => 'scl_partido_temporada_id',
-					'value' => $temporada_id,
+					'key'   => 'scl_partido_torneo_id',
+					'value' => $torneo_id,
 					'type'  => 'NUMERIC',
 				],
 				[
@@ -89,6 +87,13 @@ class Scl_Engine {
 					'value' => 'finalizado',
 				],
 			],
+			'tax_query' => [
+				[
+					'taxonomy' => 'scl_temporada',
+					'field'    => 'term_id',
+					'terms'    => $temporada_term_id,
+				]
+			]
 		];
 
 		$partidos_query = new WP_Query( $args );
@@ -241,8 +246,8 @@ class Scl_Engine {
 			'torneo_id'  => $torneo_id,
 		];
 
-		update_post_meta( $temporada_id, 'scl_temporada_tabla_cache', wp_json_encode( $cache ) );
-		update_post_meta( $temporada_id, 'scl_temporada_tabla_updated_at', current_time( 'c' ) );
+		update_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_cache", wp_json_encode( $cache ) );
+		update_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_updated_at", current_time( 'c' ) );
 	}
 
 	/**
@@ -251,16 +256,22 @@ class Scl_Engine {
 	 * @param int $torneo_id
 	 */
 	public function recalcular_todas( int $torneo_id ): void {
-		$temporadas = get_posts( [
-			'post_type'      => 'scl_temporada',
-			'meta_key'       => 'scl_temporada_torneo_id',
-			'meta_value'     => $torneo_id,
-			'posts_per_page' => -1,
-			'post_status'    => 'publish'
+		$terms = get_terms( [
+			'taxonomy'   => 'scl_temporada',
+			'hide_empty' => false,
+			'meta_query' => [
+				[
+					'key'     => 'scl_temporada_torneo_id',
+					'value'   => $torneo_id,
+					'compare' => '=',
+				]
+			],
 		] );
 
-		foreach ( $temporadas as $t ) {
-			$this->recalcular_tabla( $t->ID );
+		if ( ! is_wp_error( $terms ) ) {
+			foreach ( $terms as $t ) {
+				$this->recalcular_tabla( $torneo_id, $t->term_id );
+			}
 		}
 	}
 }
@@ -268,12 +279,13 @@ class Scl_Engine {
 /**
  * Función global auxiliar para leer la tabla cacheada
  *
- * @param int    $temporada_id
+ * @param int    $torneo_id
+ * @param int    $temporada_term_id
  * @param string $grupo_id 'general' o term_id del grupo
  * @return array
  */
-function scl_get_tabla( int $temporada_id, $grupo_id = 'general' ): array {
-	$raw = get_post_meta( $temporada_id, 'scl_temporada_tabla_cache', true );
+function scl_get_tabla( int $torneo_id, int $temporada_term_id, $grupo_id = 'general' ): array {
+	$raw = get_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_cache", true );
 	if ( ! $raw ) return [];
 	$cache = json_decode( $raw, true );
 	if ( ! is_array( $cache ) || ! isset( $cache['tablas'] ) ) return [];

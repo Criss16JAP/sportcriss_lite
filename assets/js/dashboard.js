@@ -49,4 +49,40 @@ jQuery(document).ready(function($) {
 			});
 		});
 	}
+	$('.scl-form').on('submit', function(e) {
+		e.preventDefault();
+		var $form = $(this);
+		var action = $form.data('accion');
+		var $feedback = $('#scl-form-feedback');
+		var $submit = $form.find('button[type="submit"]');
+
+		$submit.prop('disabled', true);
+		$feedback.hide().removeClass('scl-alert--error scl-alert--success');
+
+		var data = $form.serializeArray();
+		data.push({name: 'action', value: action});
+		data.push({name: 'nonce', value: scl_ajax.nonce});
+
+		$.ajax({
+			url: scl_ajax.url,
+			type: 'POST',
+			data: $.param(data),
+			success: function(res) {
+				if (res.success) {
+					$feedback.addClass('scl-alert--success').text(res.data.mensaje || 'Guardado con éxito').show();
+					setTimeout(function() {
+						var redirect = $form.data('redirect') || 'torneos';
+						window.location.href = window.scl_url(redirect);
+					}, 1500);
+				} else {
+					$feedback.addClass('scl-alert--error').text(res.data || 'Error al guardar').show();
+					$submit.prop('disabled', false);
+				}
+			},
+			error: function() {
+				$feedback.addClass('scl-alert--error').text('Error de conexión').show();
+				$submit.prop('disabled', false);
+			}
+		});
+	});
 });
