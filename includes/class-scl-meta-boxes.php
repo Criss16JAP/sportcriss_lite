@@ -203,10 +203,23 @@ class Scl_Meta_Boxes {
 	public function render_torneo_identidad( $post ) {
 		wp_nonce_field( 'scl_guardar_torneo', 'scl_torneo_nonce' );
 
+		$siglas     = get_post_meta( $post->ID, 'scl_torneo_siglas', true );
 		$logo       = absint( get_post_meta( $post->ID, 'scl_torneo_logo', true ) );
 		$imagen_url = $logo ? wp_get_attachment_image_url( $logo, 'thumbnail' ) : '';
 		?>
 		<table class="form-table">
+			<tr>
+				<th><label for="scl_torneo_siglas"><?php esc_html_e( 'Siglas del torneo', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<input type="text" id="scl_torneo_siglas" name="scl_torneo_siglas"
+						value="<?php echo esc_attr( $siglas ); ?>"
+						maxlength="6"
+						placeholder="<?php esc_attr_e( 'Ej: TLC, LRN, CPA', 'sportcriss-lite' ); ?>"
+						class="small-text"
+						style="text-transform:uppercase;">
+					<p class="description"><?php esc_html_e( 'Máximo 6 caracteres. Se usará en el título automático de partidos.', 'sportcriss-lite' ); ?></p>
+				</td>
+			</tr>
 			<tr>
 				<th><label><?php esc_html_e( 'Logo del torneo', 'sportcriss-lite' ); ?></label></th>
 				<td>
@@ -309,18 +322,25 @@ class Scl_Meta_Boxes {
 		// Encolar jQuery UI Sortable (ya viene con WordPress)
 		wp_enqueue_script( 'jquery-ui-sortable' );
 		?>
-		<p class="description">
-			<?php esc_html_e( 'Arrastra los criterios para definir el orden de desempate (de mayor a menor prioridad).', 'sportcriss-lite' ); ?>
+		<p class="description" style="margin-bottom:12px;">
+			<strong><?php esc_html_e( 'Criterio principal (siempre):', 'sportcriss-lite' ); ?></strong>
+			<?php esc_html_e( 'Puntos acumulados.', 'sportcriss-lite' ); ?><br>
+			<?php esc_html_e( 'Los criterios de abajo se aplican únicamente para desempatar equipos que terminen con el mismo número de puntos. Arrastra para definir el orden de prioridad.', 'sportcriss-lite' ); ?>
 		</p>
-		<ul id="scl-desempate-lista" style="margin:12px 0;padding:0;cursor:move;">
-			<?php foreach ( $orden as $clave ) :
+		<ul id="scl-desempate-lista" style="margin:12px 0;padding:0;">
+			<li style="padding:8px 12px;background:#f0f0f0;color:#999;border:1px dashed #ccc;margin-bottom:4px;cursor:default;list-style:none;">
+				&#128274; 1. <?php esc_html_e( 'Puntos (criterio principal — no modificable)', 'sportcriss-lite' ); ?>
+			</li>
+			<?php
+			$posicion = 2;
+			foreach ( $orden as $clave ) :
 				if ( ! isset( $criterios[ $clave ] ) ) continue; ?>
 				<li data-criterio="<?php echo esc_attr( $clave ); ?>"
-					style="background:#f9f9f9;border:1px solid #ddd;padding:8px 12px;margin-bottom:4px;border-radius:3px;list-style:none;display:flex;align-items:center;gap:8px;">
+					style="background:#f9f9f9;border:1px solid #ddd;padding:8px 12px;margin-bottom:4px;border-radius:3px;list-style:none;display:flex;align-items:center;gap:8px;cursor:move;">
 					<span style="color:#999;cursor:grab;">&#9776;</span>
-					<?php echo esc_html( $criterios[ $clave ] ); ?>
+					<?php echo esc_html( $posicion . '. ' . $criterios[ $clave ] ); ?>
 				</li>
-			<?php endforeach; ?>
+			<?php $posicion++; endforeach; ?>
 		</ul>
 		<input type="hidden" id="scl_torneo_desempate_orden" name="scl_torneo_desempate_orden"
 			value="<?php echo esc_attr( $json_guardado ?: wp_json_encode( $orden ) ); ?>">
@@ -332,15 +352,23 @@ class Scl_Meta_Boxes {
 
 			function actualizarInput() {
 				var orden = [];
-				$lista.find('li').each(function() {
+				// El primer <li> es el ítem fijo de Puntos (sin data-criterio), lo saltamos
+				$lista.find('li[data-criterio]').each(function(i) {
 					orden.push( $(this).data('criterio') );
+					// Renumerar el label visual (posición 2 en adelante)
+					var $span = $(this).find('span');
+					var textoOriginal = $(this).text().trim().replace(/^\d+\.\s*/, '');
+					$(this).contents().filter(function() {
+						return this.nodeType === 3; // nodo de texto
+					}).last().replaceWith( ' ' + (i + 2) + '. ' + textoOriginal );
 				});
 				$input.val( JSON.stringify(orden) );
 			}
 
 			$lista.sortable({
-				axis: 'y',
+				axis:   'y',
 				handle: 'span',
+				items:  'li[data-criterio]', // excluye el ítem fijo de Puntos
 				update: actualizarInput
 			});
 		});
@@ -902,6 +930,13 @@ class Scl_Meta_Boxes {
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_torneo_nonce'] ) ), 'scl_guardar_torneo' ) ) return;
 
 		// Identidad
+		$siglas = isset( $_POST['scl_torneo_siglas'] )
+			? strtoupper( sanitize_text_field( wp_unslash( $_POST['scl_torneo_siglas'] ) ) )
+			: '';
+		// Limitar a 6 caracteres tras sanitizar
+		$siglas = substr( $siglas, 0, 6 );
+		update_post_meta( $post_id, 'scl_torneo_siglas', $siglas );
+
 		$logo = isset( $_POST['scl_torneo_logo'] ) ? absint( $_POST['scl_torneo_logo'] ) : 0;
 		update_post_meta( $post_id, 'scl_torneo_logo', $logo );
 
@@ -1007,6 +1042,72 @@ class Scl_Meta_Boxes {
 		update_post_meta( $post_id, 'scl_partido_fecha',            $fecha );
 		update_post_meta( $post_id, 'scl_partido_es_vuelta',        $es_vuelta );
 		// llave_id es readonly: lo gestiona el motor de llaves.
+
+		// Generar título automático solo si hay equipos y temporada seleccionados
+		if ( $equipo_local_id && $equipo_visita_id && $temporada_id ) {
+			$titulo = $this->generar_titulo_partido( $post_id, $equipo_local_id, $equipo_visita_id, $temporada_id );
+			if ( $titulo ) {
+				// Quitar el hook temporalmente para evitar loop infinito
+				remove_action( 'save_post_scl_partido', [ $this, 'guardar_partido' ], 10 );
+				wp_update_post( [
+					'ID'         => $post_id,
+					'post_title' => $titulo,
+					'post_name'  => sanitize_title( $titulo ),
+				] );
+				add_action( 'save_post_scl_partido', [ $this, 'guardar_partido' ], 10, 2 );
+			}
+		}
+	}
+
+	/**
+	 * Genera el título automático de un partido con el patrón:
+	 * [SIGLAS] · Local vs Visitante · Jornada · Temporada
+	 *
+	 * Si no hay jornada asignada, el segmento se omite sin dejar · doble.
+	 *
+	 * @param int $post_id          ID del partido (para consultar taxonomías asignadas).
+	 * @param int $equipo_local_id  ID del scl_equipo local.
+	 * @param int $equipo_visita_id ID del scl_equipo visitante.
+	 * @param int $temporada_id     ID del scl_temporada.
+	 * @return string Título generado, o '' si faltan datos mínimos.
+	 */
+	private function generar_titulo_partido( $post_id, $equipo_local_id, $equipo_visita_id, $temporada_id ) {
+		$nombre_local   = get_the_title( $equipo_local_id );
+		$nombre_visita  = get_the_title( $equipo_visita_id );
+		$nombre_temp    = get_the_title( $temporada_id );
+
+		if ( ! $nombre_local || ! $nombre_visita || ! $nombre_temp ) {
+			return '';
+		}
+
+		// Obtener siglas desde el torneo padre de la temporada
+		$temporada_post = get_post( $temporada_id );
+		$siglas         = '';
+		if ( $temporada_post && $temporada_post->post_parent ) {
+			$siglas = get_post_meta( $temporada_post->post_parent, 'scl_torneo_siglas', true );
+			if ( ! $siglas ) {
+				// Fallback: primeras 3 letras del nombre del torneo en mayúsculas
+				$nombre_torneo = get_the_title( $temporada_post->post_parent );
+				$siglas        = strtoupper( substr( $nombre_torneo, 0, 3 ) );
+			}
+		}
+
+		// Jornada asignada al partido (puede no tener)
+		$jornadas = wp_get_post_terms( $post_id, 'scl_jornada', [ 'fields' => 'names' ] );
+		$jornada  = ( ! is_wp_error( $jornadas ) && ! empty( $jornadas ) ) ? $jornadas[0] : '';
+
+		// Construcción del título
+		$partes = [];
+		if ( $siglas ) {
+			$partes[] = '[' . $siglas . ']';
+		}
+		$partes[] = $nombre_local . ' vs ' . $nombre_visita;
+		if ( $jornada ) {
+			$partes[] = $jornada;
+		}
+		$partes[] = $nombre_temp;
+
+		return implode( ' · ', $partes );
 	}
 
 	/**

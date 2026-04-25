@@ -91,6 +91,33 @@ class Scl_Admin_Menu {
 			'edit.php?post_type=scl_llave'
 		);
 
+		// Submenú: Fases (taxonomía de partidos)
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Fases', 'sportcriss-lite' ),
+			__( 'Fases', 'sportcriss-lite' ),
+			'manage_options',
+			'edit-tags.php?taxonomy=scl_fase'
+		);
+
+		// Submenú: Jornadas (taxonomía de partidos)
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Jornadas', 'sportcriss-lite' ),
+			__( 'Jornadas', 'sportcriss-lite' ),
+			'manage_options',
+			'edit-tags.php?taxonomy=scl_jornada'
+		);
+
+		// Submenú: Grupos (taxonomía de partidos)
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Grupos', 'sportcriss-lite' ),
+			__( 'Grupos', 'sportcriss-lite' ),
+			'manage_options',
+			'edit-tags.php?taxonomy=scl_grupo'
+		);
+
 		// Submenú: Configuración (placeholder — completado en Sprint 11)
 		add_submenu_page(
 			self::PARENT_SLUG,
