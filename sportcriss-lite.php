@@ -60,6 +60,7 @@ function scl_activar_plugin() {
 	Scl_Cpts::registrar();
 	Scl_Taxonomies::registrar();
 	flush_rewrite_rules();
+	Scl_Roles::crear_datos_base();
 }
 
 /**

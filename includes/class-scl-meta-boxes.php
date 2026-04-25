@@ -125,6 +125,12 @@ class Scl_Meta_Boxes {
 		add_action( 'scl_fase_edit_form_fields', [ $this, 'render_fase_edit_fields' ] );
 		add_action( 'created_scl_fase',          [ $this, 'guardar_fase_term_meta' ] );
 		add_action( 'edited_scl_fase',           [ $this, 'guardar_fase_term_meta' ] );
+
+		// Term meta boxes para scl_grupo
+		add_action( 'scl_grupo_add_form_fields',  [ $this, 'render_grupo_add_fields' ] );
+		add_action( 'scl_grupo_edit_form_fields', [ $this, 'render_grupo_edit_fields' ] );
+		add_action( 'created_scl_grupo',          [ $this, 'guardar_grupo_term_meta' ] );
+		add_action( 'edited_scl_grupo',           [ $this, 'guardar_grupo_term_meta' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -636,6 +642,41 @@ class Scl_Meta_Boxes {
 				</td>
 			</tr>
 		</table>
+		<script>
+		jQuery(document).ready(function($) {
+			var $temporadaSelect = $('#scl_partido_temporada_id');
+			var $grupoSelect = $('#tax-input-scl_grupo'); // Si wp-admin genera metabox con checkbox, el ID puede variar.
+			// Para el metabox nativo de categorías (grupos), WordPress usa #taxonomy-scl_grupo
+			
+			$temporadaSelect.on('change', function() {
+				var temporadaId = $(this).val();
+				if (!temporadaId) return;
+
+				$.ajax({
+					url: ajaxurl,
+					type: 'POST',
+					data: {
+						action: 'scl_get_grupos_por_torneo',
+						temporada_id: temporadaId,
+						nonce: '<?php echo esc_js( wp_create_nonce( "scl_ajax_nonce" ) ); ?>'
+					},
+					success: function(response) {
+						if (response.success && response.data) {
+							// Ocultar todos los li de grupos en el metabox nativo
+							$('#scl_grupochecklist li').hide();
+							
+							// Mostrar solo los retornados
+							response.data.forEach(function(grupoId) {
+								$('#scl_grupochecklist li#scl_grupo-' + grupoId).show();
+							});
+						}
+					}
+				});
+			});
+			// Disparar en la carga inicial
+			$temporadaSelect.trigger('change');
+		});
+		</script>
 		<?php
 	}
 
@@ -728,6 +769,18 @@ class Scl_Meta_Boxes {
 					<label for="scl_llave_es_doble"><?php esc_html_e( 'Ida y vuelta', 'sportcriss-lite' ); ?></label>
 				</td>
 			</tr>
+			<?php 
+			$ganador_provisional_id = get_post_meta( $post->ID, 'scl_llave_ganador_provisional_id', true );
+			if ( $ganador_provisional_id ) : ?>
+			<tr>
+				<th><?php esc_html_e( 'Ganador Provisional', 'sportcriss-lite' ); ?></th>
+				<td>
+					<input type="text" value="<?php echo esc_attr( get_the_title( $ganador_provisional_id ) ); ?>"
+						readonly disabled class="regular-text">
+					<p class="description"><?php esc_html_e( 'Calculado por el motor. El organizador debe confirmarlo abajo.', 'sportcriss-lite' ); ?></p>
+				</td>
+			</tr>
+			<?php endif; ?>
 			<?php if ( $equipo_local_id && $equipo_visita_id ) : ?>
 			<tr>
 				<th><label for="scl_llave_ganador_id"><?php esc_html_e( 'Equipo ganador confirmado', 'sportcriss-lite' ); ?></label></th>
@@ -786,7 +839,7 @@ class Scl_Meta_Boxes {
 	 * Hook: scl_fase_add_form_fields
 	 */
 	public function render_fase_add_fields() {
-		wp_nonce_field( 'scl_guardar_fase_meta', 'scl_fase_nonce' );
+		wp_nonce_field( 'scl_guardar_term_fase', 'scl_fase_nonce' );
 		?>
 		<div class="form-field">
 			<label>
@@ -810,7 +863,7 @@ class Scl_Meta_Boxes {
 	 * @param WP_Term $term
 	 */
 	public function render_fase_edit_fields( $term ) {
-		wp_nonce_field( 'scl_guardar_fase_meta', 'scl_fase_nonce' );
+		wp_nonce_field( 'scl_guardar_term_fase', 'scl_fase_nonce' );
 
 		$suma_puntos = get_term_meta( $term->term_id, 'scl_fase_suma_puntos', true );
 		$es_playoff  = get_term_meta( $term->term_id, 'scl_fase_es_playoff',  true );
@@ -850,7 +903,7 @@ class Scl_Meta_Boxes {
 		if ( ! isset( $_POST['scl_fase_nonce'] ) ) {
 			return;
 		}
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_fase_nonce'] ) ), 'scl_guardar_fase_meta' ) ) {
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_fase_nonce'] ) ), 'scl_guardar_term_fase' ) ) {
 			return;
 		}
 
@@ -859,6 +912,79 @@ class Scl_Meta_Boxes {
 
 		update_term_meta( $term_id, 'scl_fase_suma_puntos', $suma_puntos );
 		update_term_meta( $term_id, 'scl_fase_es_playoff',  $es_playoff );
+	}
+
+	// -----------------------------------------------------------------------
+	// Render: term meta boxes para scl_grupo
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Campos en el formulario de CREACIÓN de término scl_grupo.
+	 */
+	public function render_grupo_add_fields() {
+		wp_nonce_field( 'scl_guardar_term_grupo', 'scl_grupo_nonce' );
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'posts_per_page' => -1,
+			'post_status'    => 'publish',
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+		?>
+		<div class="form-field form-required">
+			<label for="scl_grupo_torneo_id"><?php esc_html_e( 'Torneo al que pertenece este grupo', 'sportcriss-lite' ); ?></label>
+			<select name="scl_grupo_torneo_id" id="scl_grupo_torneo_id" required>
+				<option value=""><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+				<?php foreach ( $torneos as $t ) : ?>
+					<option value="<?php echo esc_attr( $t->ID ); ?>"><?php echo esc_html( $t->post_title ); ?></option>
+				<?php endforeach; ?>
+			</select>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Campos en el formulario de EDICIÓN de término scl_grupo.
+	 */
+	public function render_grupo_edit_fields( $term ) {
+		wp_nonce_field( 'scl_guardar_term_grupo', 'scl_grupo_nonce' );
+		$torneo_id = get_term_meta( $term->term_id, 'scl_grupo_torneo_id', true );
+		$torneos = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'posts_per_page' => -1,
+			'post_status'    => 'publish',
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+		?>
+		<tr class="form-field form-required">
+			<th><label for="scl_grupo_torneo_id"><?php esc_html_e( 'Torneo al que pertenece este grupo', 'sportcriss-lite' ); ?></label></th>
+			<td>
+				<select name="scl_grupo_torneo_id" id="scl_grupo_torneo_id" required>
+					<option value=""><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
+					<?php foreach ( $torneos as $t ) : ?>
+						<option value="<?php echo esc_attr( $t->ID ); ?>" <?php selected( $torneo_id, $t->ID ); ?>><?php echo esc_html( $t->post_title ); ?></option>
+					<?php endforeach; ?>
+				</select>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * Guarda los term metas de scl_grupo.
+	 */
+	public function guardar_grupo_term_meta( $term_id ) {
+		if ( ! isset( $_POST['scl_grupo_nonce'] ) ) {
+			return;
+		}
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_grupo_nonce'] ) ), 'scl_guardar_term_grupo' ) ) {
+			return;
+		}
+
+		if ( isset( $_POST['scl_grupo_torneo_id'] ) ) {
+			update_term_meta( $term_id, 'scl_grupo_torneo_id', absint( $_POST['scl_grupo_torneo_id'] ) );
+		}
 	}
 
 	// -----------------------------------------------------------------------

@@ -35,6 +35,7 @@ class Scl_Taxonomies {
 		self::registrar_jornada();
 		self::registrar_grupo();
 		self::registrar_term_metas_fase();
+		self::registrar_term_metas_grupo();
 	}
 
 	// -----------------------------------------------------------------------
@@ -176,4 +177,34 @@ class Scl_Taxonomies {
 			'show_in_rest'      => false,
 		] );
 	}
+
+	/**
+	 * Registra los term metas de la taxonomía scl_grupo.
+	 */
+	private static function registrar_term_metas_grupo() {
+		register_term_meta( 'scl_grupo', 'scl_grupo_torneo_id', [
+			'type'              => 'integer',
+			'description'       => __( 'ID del Torneo al que pertenece este grupo', 'sportcriss-lite' ),
+			'single'            => true,
+			'default'           => 0,
+			'sanitize_callback' => 'absint',
+			'show_in_rest'      => false,
+		] );
+	}
+}
+
+/**
+ * Función auxiliar para obtener grupos por torneo
+ *
+ * @param int $torneo_id
+ * @return array
+ */
+function scl_get_grupos_por_torneo( int $torneo_id ): array {
+	$terms = get_terms( [ 'taxonomy' => 'scl_grupo', 'hide_empty' => false ] );
+	if ( is_wp_error( $terms ) ) {
+		return [];
+	}
+	return array_filter( $terms, function( $term ) use ( $torneo_id ) {
+		return (int) get_term_meta( $term->term_id, 'scl_grupo_torneo_id', true ) === $torneo_id;
+	});
 }

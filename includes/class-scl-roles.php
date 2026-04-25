@@ -63,4 +63,29 @@ class Scl_Roles {
 	public static function eliminar() {
 		remove_role( self::SLUG );
 	}
+
+	/**
+	 * Crea las fases base (Grupos y Playoff) durante la activación.
+	 */
+	public static function crear_datos_base(): void {
+		// Fase 1: Grupos
+		$fase_grupos = get_term_by( 'slug', 'grupos', 'scl_fase' );
+		if ( ! $fase_grupos ) {
+			$result = wp_insert_term( 'Grupos', 'scl_fase', [ 'slug' => 'grupos' ] );
+			if ( ! is_wp_error( $result ) ) {
+				update_term_meta( $result['term_id'], 'scl_fase_suma_puntos', '1' );
+				update_term_meta( $result['term_id'], 'scl_fase_es_playoff',  '0' );
+			}
+		}
+
+		// Fase 2: Playoff
+		$fase_playoff = get_term_by( 'slug', 'playoff', 'scl_fase' );
+		if ( ! $fase_playoff ) {
+			$result = wp_insert_term( 'Playoff', 'scl_fase', [ 'slug' => 'playoff' ] );
+			if ( ! is_wp_error( $result ) ) {
+				update_term_meta( $result['term_id'], 'scl_fase_suma_puntos', '0' );
+				update_term_meta( $result['term_id'], 'scl_fase_es_playoff',  '1' );
+			}
+		}
+	}
 }
