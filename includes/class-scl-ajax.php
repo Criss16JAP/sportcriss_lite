@@ -24,35 +24,30 @@ class Scl_Ajax {
 	 * @param Scl_Loader $loader Instancia del loader de hooks.
 	 */
 	public function registrar_handlers( $loader ) {
-		$loader->add_action( 'wp_ajax_scl_get_grupos_por_torneo', $this, 'ajax_get_grupos_por_torneo' );
+		$loader->add_action( 'wp_ajax_scl_get_grupos_por_torneo', $this, 'get_grupos_por_torneo' );
 		$loader->add_action( 'wp_ajax_scl_confirmar_ganador_llave', $this, 'ajax_confirmar_ganador_llave' );
 	}
 
-	/**
-	 * Devuelve los CPTs de scl_grupo filtrados por torneo_id (post_parent).
-	 */
-	public function ajax_get_grupos_por_torneo() {
-		check_ajax_referer( 'scl_ajax_nonce', 'nonce' );
+	public function get_grupos_por_torneo(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
 
-		if ( ! current_user_can( 'edit_posts' ) ) {
-			wp_send_json_error( 'Permisos insuficientes.' );
-		}
-
-		$temporada_id = isset( $_POST['temporada_id'] ) ? absint( $_POST['temporada_id'] ) : 0;
+		$temporada_id = absint( $_POST['temporada_id'] ?? 0 );
 		if ( ! $temporada_id ) {
-			wp_send_json_error( 'Falta temporada_id.' );
+			wp_send_json_error( 'temporada_id requerido' );
 		}
 
+		// Paso intermedio: obtener el torneo padre de la temporada
 		$temporada = get_post( $temporada_id );
-		if ( ! $temporada || 'scl_temporada' !== $temporada->post_type ) {
-			wp_send_json_error( 'Temporada inválida.' );
+		if ( ! $temporada || $temporada->post_type !== 'scl_temporada' ) {
+			wp_send_json_error( 'Temporada no válida' );
 		}
 
-		$torneo_id = $temporada->post_parent;
+		$torneo_id = (int) $temporada->post_parent;
 		if ( ! $torneo_id ) {
-			wp_send_json_error( 'Temporada no tiene torneo.' );
+			wp_send_json_error( 'La temporada no tiene torneo padre asignado' );
 		}
 
+		// Buscar grupos cuyo post_parent sea el torneo
 		$grupos = get_posts( [
 			'post_type'      => 'scl_grupo',
 			'post_parent'    => $torneo_id,
@@ -61,14 +56,14 @@ class Scl_Ajax {
 			'orderby'        => 'title',
 			'order'          => 'ASC',
 		] );
-		
-		$data = [];
-		foreach ( $grupos as $g ) {
-			$data[] = [
-				'ID'         => $g->ID,
-				'post_title' => $g->post_title,
+
+		// Devolver solo los campos que el JS necesita
+		$data = array_map( function( $grupo ) {
+			return [
+				'ID'         => $grupo->ID,
+				'post_title' => $grupo->post_title,
 			];
-		}
+		}, $grupos );
 
 		wp_send_json_success( $data );
 	}

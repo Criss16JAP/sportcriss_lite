@@ -626,19 +626,15 @@ class Scl_Meta_Boxes {
 	public function render_partido_clasificacion( $post ) {
 		$llave_id  = get_post_meta( $post->ID, 'scl_partido_llave_id',  true );
 		$es_vuelta = get_post_meta( $post->ID, 'scl_partido_es_vuelta', true );
-		$grupo_id  = get_post_meta( $post->ID, 'scl_partido_grupo_id', true );
+		$grupo_guardado = (int) get_post_meta( $post->ID, 'scl_partido_grupo_id', true );
+		$nonce = wp_create_nonce( 'scl_dashboard_nonce' );
 		?>
 		<table class="form-table">
 			<tr>
 				<th><?php esc_html_e( 'Grupo', 'sportcriss-lite' ); ?></th>
 				<td>
-					<select id="scl_partido_grupo_id" name="scl_partido_grupo_id">
+					<select id="scl_partido_grupo_id" name="scl_partido_grupo_id" data-selected="<?php echo esc_attr( $grupo_guardado ); ?>">
 						<option value="0"><?php esc_html_e( '— Sin grupo —', 'sportcriss-lite' ); ?></option>
-						<?php if ( $grupo_id ) : ?>
-							<option value="<?php echo esc_attr( $grupo_id ); ?>" selected>
-								<?php echo esc_html( get_the_title( $grupo_id ) ); ?>
-							</option>
-						<?php endif; ?>
 					</select>
 				</td>
 			</tr>
@@ -663,38 +659,47 @@ class Scl_Meta_Boxes {
 		<script>
 		jQuery(document).ready(function($) {
 			var $temporadaSelect = $('#scl_partido_temporada_id');
-			var $grupoSelect = $('#scl_partido_grupo_id');
-			var grupoSeleccionado = '<?php echo esc_js( $grupo_id ); ?>';
-			
-			$temporadaSelect.on('change', function() {
-				var temporadaId = $(this).val();
+			var $grupoSelect     = $('#scl_partido_grupo_id');
+			var grupoGuardado    = parseInt($grupoSelect.data('selected')) || 0;
+
+			function cargarGrupos(temporadaId) {
 				if (!temporadaId) {
-					$grupoSelect.html('<option value="0"><?php esc_html_e( "— Sin grupo —", "sportcriss-lite" ); ?></option>');
+					$grupoSelect.html('<option value="0">— Sin grupo —</option>');
 					return;
 				}
-
 				$.ajax({
-					url: ajaxurl,
+					url:  ajaxurl,
 					type: 'POST',
 					data: {
-						action: 'scl_get_grupos_por_torneo',
+						action:      'scl_get_grupos_por_torneo',
 						temporada_id: temporadaId,
-						nonce: '<?php echo esc_js( wp_create_nonce( "scl_ajax_nonce" ) ); ?>'
+						nonce:       '<?php echo esc_js( $nonce ); ?>'
 					},
 					success: function(response) {
 						if (response.success && response.data) {
-							var html = '<option value="0"><?php esc_html_e( "— Sin grupo —", "sportcriss-lite" ); ?></option>';
+							var html = '<option value="0">— Sin grupo —</option>';
 							response.data.forEach(function(grupo) {
-								var selected = (grupo.ID == grupoSeleccionado) ? ' selected' : '';
-								html += '<option value="' + grupo.ID + '"' + selected + '>' + grupo.post_title + '</option>';
+								var sel = (grupo.ID == grupoGuardado) ? ' selected' : '';
+								html += '<option value="' + grupo.ID + '"' + sel + '>'
+									 + grupo.post_title + '</option>';
 							});
 							$grupoSelect.html(html);
+						} else {
+							$grupoSelect.html('<option value="0">— Sin grupo —</option>');
 						}
+					},
+					error: function() {
+						$grupoSelect.html('<option value="0">— Error cargando grupos —</option>');
 					}
 				});
+			}
+
+			$temporadaSelect.on('change', function() {
+				cargarGrupos($(this).val());
 			});
-			// Disparar en la carga inicial
-			$temporadaSelect.trigger('change');
+
+			// Disparar al cargar para recuperar el valor guardado
+			cargarGrupos($temporadaSelect.val());
 		});
 		</script>
 		<?php

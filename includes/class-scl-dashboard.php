@@ -40,7 +40,7 @@ class Scl_Dashboard {
 
 		wp_localize_script( 'scl-dashboard-js', 'scl_ajax', [
 			'url'   => admin_url( 'admin-ajax.php' ),
-			'nonce' => wp_create_nonce( 'scl_ajax_nonce' ),
+			'nonce' => wp_create_nonce( 'scl_dashboard_nonce' ),
 			'base'  => home_url( '/mi-panel/' ),
 		] );
 	}
