@@ -41,11 +41,6 @@ class Scl_Access {
 	 * Si es así, lo redirige al dashboard frontend.
 	 *
 	 * Registrado en: 'init' con prioridad 1 (antes de cualquier lógica de admin).
-	 *
-	 * La condición verifica tres cosas:
-	 *   1. El usuario está logueado.
-	 *   2. El usuario tiene el rol scl_organizador.
-	 *   3. La URL actual contiene /wp-admin/ Y no es admin-ajax.php.
 	 */
 	public function bloquear_wp_admin() {
 		if ( ! is_user_logged_in() ) {
@@ -60,6 +55,42 @@ class Scl_Access {
 			wp_safe_redirect( $this->url_dashboard() );
 			exit;
 		}
+	}
+
+	/**
+	 * Oculta la barra de administración de WordPress al Organizador.
+	 *
+	 * Se llama en 'after_setup_theme' para que show_admin_bar() esté disponible.
+	 * También inyecta CSS inline como garantía secundaria contra márgenes residuales
+	 * que algunos temas añaden al body cuando el admin bar está activo.
+	 *
+	 * Registrado en: 'after_setup_theme'.
+	 */
+	public function ocultar_admin_bar() {
+		if ( ! is_user_logged_in() ) {
+			return;
+		}
+
+		if ( ! $this->es_organizador() ) {
+			return;
+		}
+
+		show_admin_bar( false );
+	}
+
+	/**
+	 * Inyecta CSS inline para eliminar márgenes residuales del admin bar.
+	 * Solo se ejecuta si el usuario es Organizador.
+	 *
+	 * Registrado en: 'wp_enqueue_scripts'.
+	 */
+	public function eliminar_margen_admin_bar() {
+		if ( ! is_user_logged_in() || ! $this->es_organizador() ) {
+			return;
+		}
+
+		$css = 'html { margin-top: 0 !important; } * html body { margin-top: 0 !important; }';
+		wp_add_inline_style( 'wp-block-library', $css );
 	}
 
 	// -----------------------------------------------------------------------

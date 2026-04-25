@@ -60,14 +60,14 @@ class Scl_Cpts {
 		];
 
 		register_post_type( 'scl_equipo', [
-			'labels'       => $labels,
-			'public'       => true,
-			'has_archive'  => true,
-			'hierarchical' => false,
-			'show_in_rest' => false,
-			'supports'     => [ 'title', 'thumbnail' ],
-			'rewrite'      => [ 'slug' => 'equipo', 'with_front' => false ],
-			'menu_icon'    => 'dashicons-groups',
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => true,
+			'hierarchical'  => false,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title', 'thumbnail' ],
+			'rewrite'       => [ 'slug' => 'equipo', 'with_front' => false ],
 		] );
 	}
 
@@ -93,14 +93,14 @@ class Scl_Cpts {
 		];
 
 		register_post_type( 'scl_torneo', [
-			'labels'       => $labels,
-			'public'       => true,
-			'has_archive'  => true,
-			'hierarchical' => false,
-			'show_in_rest' => false,
-			'supports'     => [ 'title', 'thumbnail' ],
-			'rewrite'      => [ 'slug' => 'torneo', 'with_front' => false ],
-			'menu_icon'    => 'dashicons-shield',
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => true,
+			'hierarchical'  => false,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title', 'thumbnail' ],
+			'rewrite'       => [ 'slug' => 'torneo', 'with_front' => false ],
 		] );
 	}
 
@@ -127,14 +127,14 @@ class Scl_Cpts {
 		];
 
 		register_post_type( 'scl_temporada', [
-			'labels'       => $labels,
-			'public'       => true,
-			'has_archive'  => false,
-			'hierarchical' => true,
-			'show_in_rest' => false,
-			'supports'     => [ 'title', 'page-attributes' ],
-			'rewrite'      => [ 'slug' => 'temporada', 'with_front' => false ],
-			'menu_icon'    => 'dashicons-calendar-alt',
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => false,
+			'hierarchical'  => true,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title', 'page-attributes' ],
+			'rewrite'       => [ 'slug' => 'temporada', 'with_front' => false ],
 		] );
 	}
 
@@ -161,14 +161,14 @@ class Scl_Cpts {
 		];
 
 		register_post_type( 'scl_partido', [
-			'labels'       => $labels,
-			'public'       => true,
-			'has_archive'  => false,
-			'hierarchical' => false,
-			'show_in_rest' => false,
-			'supports'     => [ 'title' ],
-			'rewrite'      => [ 'slug' => 'partido', 'with_front' => false ],
-			'menu_icon'    => 'dashicons-chart-bar',
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => false,
+			'hierarchical'  => false,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title' ],
+			'rewrite'       => [ 'slug' => 'partido', 'with_front' => false ],
 		] );
 	}
 
@@ -194,14 +194,14 @@ class Scl_Cpts {
 		];
 
 		register_post_type( 'scl_llave', [
-			'labels'       => $labels,
-			'public'       => true,
-			'has_archive'  => false,
-			'hierarchical' => false,
-			'show_in_rest' => false,
-			'supports'     => [ 'title' ],
-			'rewrite'      => [ 'slug' => 'llave', 'with_front' => false ],
-			'menu_icon'    => 'dashicons-networking',
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => false,
+			'hierarchical'  => false,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title' ],
+			'rewrite'       => [ 'slug' => 'llave', 'with_front' => false ],
 		] );
 	}
 }

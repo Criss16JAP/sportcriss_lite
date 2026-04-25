@@ -30,6 +30,7 @@ define( 'SCL_BASENAME', plugin_basename( __FILE__ ) );
 require_once SCL_PATH . 'includes/class-scl-loader.php';
 require_once SCL_PATH . 'includes/class-scl-roles.php';
 require_once SCL_PATH . 'includes/class-scl-access.php';
+require_once SCL_PATH . 'includes/class-scl-admin-menu.php';
 require_once SCL_PATH . 'includes/class-scl-cpts.php';
 require_once SCL_PATH . 'includes/class-scl-taxonomies.php';
 require_once SCL_PATH . 'includes/class-scl-meta-boxes.php';
@@ -80,7 +81,13 @@ function scl_run() {
 
 	// Acceso y bloqueo de wp-admin para el rol Organizador
 	$access = new Scl_Access();
-	$loader->add_action( 'init', [ $access, 'bloquear_wp_admin' ], 1 );
+	$loader->add_action( 'init',               [ $access, 'bloquear_wp_admin' ],       1 );
+	$loader->add_action( 'after_setup_theme',  [ $access, 'ocultar_admin_bar' ] );
+	$loader->add_action( 'wp_enqueue_scripts', [ $access, 'eliminar_margen_admin_bar' ] );
+
+	// Menú unificado en wp-admin (solo para administrator)
+	$admin_menu = new Scl_Admin_Menu();
+	$loader->add_action( 'admin_menu', [ $admin_menu, 'registrar' ] );
 
 	// Registro de CPTs y taxonomías en cada carga
 	$loader->add_action( 'init', [ 'Scl_Cpts',       'registrar' ] );
