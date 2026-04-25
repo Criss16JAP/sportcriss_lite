@@ -15,10 +15,9 @@ class Scl_Dashboard {
 
 	public function __construct() {
 		add_shortcode( 'scl_dashboard', [ $this, 'render' ] );
-		add_filter( 'query_vars', [ $this, 'registrar_query_vars' ] );
 	}
 
-	public function registrar_query_vars( $vars ) {
+	public function registrar_query_vars( array $vars ): array {
 		$vars[] = 'scl_ruta';
 		$vars[] = 'scl_id';
 		$vars[] = 'scl_accion';

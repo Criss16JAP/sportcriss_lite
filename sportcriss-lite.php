@@ -121,7 +121,7 @@ function scl_run() {
 
 	// Dashboard frontend
 	$dashboard = new Scl_Dashboard();
-	$loader->add_action( 'init',            [ $dashboard, 'registrar_query_vars' ] );
+	$loader->add_filter( 'query_vars',      [ $dashboard, 'registrar_query_vars' ] );
 	$loader->add_action( 'template_redirect', [ $dashboard, 'despachar' ] );
 	$loader->add_action( 'wp_enqueue_scripts', [ $dashboard, 'encolar_assets' ] );
 
