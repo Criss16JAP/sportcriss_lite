@@ -528,37 +528,6 @@ class Scl_Meta_Boxes {
 				</td>
 			</tr>
 			<tr>
-				<th><label for="tax-input-scl_jornada">Jornada</label></th>
-				<td>
-					<?php
-					$jornadas_asignadas = wp_get_post_terms( $post->ID, 'scl_jornada' );
-					$jornada_names = ( ! is_wp_error( $jornadas_asignadas ) && ! empty( $jornadas_asignadas ) )
-						? implode( ', ', wp_list_pluck( $jornadas_asignadas, 'name' ) ) : '';
-					?>
-					<div class="tagsdiv" id="scl_jornada_wrapper">
-						<input
-							data-wp-taxonomy="scl_jornada"
-							type="text"
-							id="new-tag-scl_jornada"
-							name="newtag[scl_jornada]"
-							class="newtag form-input-tip"
-							size="20"
-							autocomplete="off"
-							placeholder="Escribir o buscar jornada..."
-						>
-						<input type="hidden"
-							name="tax_input[scl_jornada]"
-							id="tax-input-scl_jornada"
-							value="<?php echo esc_attr( $jornada_names ); ?>"
-						>
-					</div>
-					<p class="description">
-						Escribe el nombre de la jornada (ej: "Fecha 1").
-						Si ya existe la seleccionará, si no, la creará automáticamente.
-					</p>
-				</td>
-			</tr>
-			<tr>
 				<th><label for="scl_partido_tipo_fase">Tipo de fase</label></th>
 				<td>
 					<select id="scl_partido_tipo_fase" name="scl_partido_tipo_fase">
@@ -1218,41 +1187,36 @@ class Scl_Meta_Boxes {
 	}
 
 	private function generar_titulo_partido( int $post_id ): string {
-		$torneo_id    = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
-		$local_id     = (int) get_post_meta( $post_id, 'scl_partido_equipo_local_id', true );
-		$visita_id    = (int) get_post_meta( $post_id, 'scl_partido_equipo_visita_id', true );
+		$local_id  = (int) get_post_meta( $post_id, 'scl_partido_equipo_local_id', true );
+		$visita_id = (int) get_post_meta( $post_id, 'scl_partido_equipo_visita_id', true );
 
-		// Sin equipos no hay título posible — salir silenciosamente
-		if ( ! $local_id || ! $visita_id ) {
-			return '';
-		}
+		// Sin equipos no hay título
+		if ( ! $local_id || ! $visita_id ) return '';
 
 		$local  = get_the_title( $local_id );
 		$visita = get_the_title( $visita_id );
+		$base   = $local . ' vs ' . $visita;
 
-		// Siglas del torneo (opcional)
-		$prefijo = '';
+		// Bloque central: siglas + temporada
+		$torneo_id = (int) get_post_meta( $post_id, 'scl_partido_torneo_id', true );
+		$bloque_torneo = '';
 		if ( $torneo_id ) {
 			$siglas = strtoupper( trim( get_post_meta( $torneo_id, 'scl_torneo_siglas', true ) ) );
 			if ( ! $siglas ) {
 				$siglas = strtoupper( substr( get_the_title( $torneo_id ), 0, 3 ) );
 			}
-			$prefijo = "[{$siglas}] · ";
+			$terms_temp = wp_get_post_terms( $post_id, 'scl_temporada' );
+			$temporada  = ( ! is_wp_error( $terms_temp ) && ! empty( $terms_temp ) )
+				? ' ' . $terms_temp[0]->name : '';
+			$bloque_torneo = ' - ' . $siglas . $temporada;
 		}
 
-		// Temporada desde taxonomía (opcional)
-		$terms = wp_get_post_terms( $post_id, 'scl_temporada' );
-		$temporada = ( ! is_wp_error( $terms ) && ! empty( $terms ) )
-			? ' · ' . $terms[0]->name
-			: '';
+		// Jornada
+		$terms_jor = wp_get_post_terms( $post_id, 'scl_jornada' );
+		$jornada   = ( ! is_wp_error( $terms_jor ) && ! empty( $terms_jor ) )
+			? ' - ' . $terms_jor[0]->name : '';
 
-		// Jornada (opcional)
-		$jornadas = wp_get_post_terms( $post_id, 'scl_jornada' );
-		$jornada  = ( ! is_wp_error( $jornadas ) && ! empty( $jornadas ) )
-			? ' · ' . $jornadas[0]->name
-			: '';
-
-		return $prefijo . $local . ' vs ' . $visita . $jornada . $temporada;
+		return $base . $bloque_torneo . $jornada;
 	}
 
 	/**
