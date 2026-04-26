@@ -466,3 +466,399 @@ jQuery(document).ready(function($) {
 	});
 
 });
+
+// ==========================================================================
+// SPRINT 6: Partidos
+// ==========================================================================
+
+var scl_pending_grupo_id = 0;
+
+window.scl_resultado_abrir = function(data) {
+	var $ = jQuery;
+	$('#scl_resultado_partido_id').val(data.id);
+	$('#scl_resultado_tipo_fase').val(data.tipo_fase || 'grupos');
+
+	// Escudo local
+	if (data.escudo_local) {
+		$('#scl_resultado_img_local').attr('src', data.escudo_local).show();
+		$('#scl_resultado_placeholder_local').hide();
+	} else {
+		$('#scl_resultado_img_local').hide();
+		$('#scl_resultado_placeholder_local').show()
+			.text(data.nombre_local ? data.nombre_local.charAt(0).toUpperCase() : '?');
+	}
+	// Escudo visitante
+	if (data.escudo_visita) {
+		$('#scl_resultado_img_visita').attr('src', data.escudo_visita).show();
+		$('#scl_resultado_placeholder_visita').hide();
+	} else {
+		$('#scl_resultado_img_visita').hide();
+		$('#scl_resultado_placeholder_visita').show()
+			.text(data.nombre_visita ? data.nombre_visita.charAt(0).toUpperCase() : '?');
+	}
+
+	$('#scl_resultado_nombre_local').text(data.nombre_local || '—');
+	$('#scl_resultado_nombre_visita').text(data.nombre_visita || '—');
+	$('#scl_resultado_pen_label_local').text(data.nombre_local || '');
+	$('#scl_resultado_pen_label_visita').text(data.nombre_visita || '');
+
+	var gl = (data.goles_local  !== '' && data.goles_local  != null) ? data.goles_local  : '';
+	var gv = (data.goles_visita !== '' && data.goles_visita != null) ? data.goles_visita : '';
+	$('#scl_resultado_goles_local').val(gl);
+	$('#scl_resultado_goles_visita').val(gv);
+	$('#scl_resultado_penales_local').val('');
+	$('#scl_resultado_penales_visita').val('');
+	$('#scl_resultado_estado').val(gl !== '' ? 'finalizado' : 'pendiente');
+
+	scl_resultado_toggle_penales();
+	scl_drawer_abrir('scl_resultado_drawer');
+};
+
+function scl_resultado_toggle_penales() {
+	var tipo_fase = jQuery('#scl_resultado_tipo_fase').val();
+	var gl = jQuery('#scl_resultado_goles_local').val();
+	var gv = jQuery('#scl_resultado_goles_visita').val();
+	var empate = gl !== '' && gv !== '' && parseInt(gl, 10) === parseInt(gv, 10);
+	jQuery('#scl_resultado_penales_seccion').toggle(tipo_fase === 'playoff' && empate);
+}
+
+window.scl_partido_nuevo = function() {
+	var $ = jQuery;
+	$('#scl_partido_id').val(0);
+	$('#scl_partido_torneo_id').val('');
+	$('#scl_partido_temporada_id').val('');
+	$('#scl_partido_tipo_fase').val('grupos');
+	$('#scl_partido_grupo_id').html('<option value="">— Sin grupo / grupo único —</option>');
+	$('#scl_partido_jornada').val('');
+	$('#scl_partido_equipo_local_id').val('');
+	$('#scl_partido_equipo_visita_id').val('');
+	$('#scl_partido_fecha').val('');
+	$('#scl_partido_estado').val('pendiente');
+	$('#scl_partido_goles_local').val('');
+	$('#scl_partido_goles_visita').val('');
+	$('#scl_partido_penales_local').val('');
+	$('#scl_partido_penales_visita').val('');
+	$('#scl_partido_marcador_fields').hide();
+	$('#scl_partido_penales_seccion').hide();
+	$('#scl_partido_grupo_field').show();
+	$('#scl_partido_jornada_field').show();
+	$('#scl_partido_drawer_titulo').text('Nuevo partido');
+	scl_drawer_abrir('scl_partido_drawer');
+};
+
+window.scl_partido_editar = function(data) {
+	var $ = jQuery;
+	$('#scl_partido_id').val(data.id);
+	$('#scl_partido_torneo_id').val(data.torneo_id || '');
+	$('#scl_partido_temporada_id').val(data.temporada_term_id || '');
+	$('#scl_partido_tipo_fase').val(data.tipo_fase || 'grupos');
+	$('#scl_partido_jornada').val(data.jornada || '');
+	$('#scl_partido_equipo_local_id').val(data.equipo_local_id || '');
+	$('#scl_partido_equipo_visita_id').val(data.equipo_visita_id || '');
+	$('#scl_partido_fecha').val(data.fecha || '');
+	$('#scl_partido_estado').val(data.estado || 'pendiente');
+
+	if (data.estado === 'finalizado') {
+		$('#scl_partido_marcador_fields').show();
+		$('#scl_partido_goles_local').val(data.goles_local  != null && data.goles_local  !== '' ? data.goles_local  : '');
+		$('#scl_partido_goles_visita').val(data.goles_visita != null && data.goles_visita !== '' ? data.goles_visita : '');
+	} else {
+		$('#scl_partido_marcador_fields').hide();
+		$('#scl_partido_goles_local').val('');
+		$('#scl_partido_goles_visita').val('');
+	}
+	$('#scl_partido_penales_local').val('');
+	$('#scl_partido_penales_visita').val('');
+
+	var es_playoff = data.tipo_fase === 'playoff';
+	$('#scl_partido_grupo_field').toggle(!es_playoff);
+	$('#scl_partido_jornada_field').toggle(!es_playoff);
+
+	if (data.torneo_id) {
+		scl_pending_grupo_id = data.grupo_id || 0;
+		scl_cargar_grupos(data.torneo_id, data.grupo_id);
+	}
+
+	scl_partido_actualizar_labels();
+	scl_partido_toggle_penales();
+	$('#scl_partido_drawer_titulo').text('Editar partido');
+	scl_drawer_abrir('scl_partido_drawer');
+};
+
+function scl_cargar_grupos(torneo_id, selected_id) {
+	var $select = jQuery('#scl_partido_grupo_id');
+	$select.prop('disabled', true);
+	jQuery.post(scl_ajax.url, {
+		action:    'scl_get_grupos_por_torneo',
+		nonce:     scl_ajax.nonce,
+		torneo_id: torneo_id
+	}, function(res) {
+		$select.html('<option value="">— Sin grupo / grupo único —</option>');
+		if (res.success && res.data.length) {
+			jQuery.each(res.data, function(i, grupo) {
+				$select.append('<option value="' + grupo.ID + '">' + grupo.post_title + '</option>');
+			});
+		}
+		var target = selected_id || scl_pending_grupo_id;
+		if (target) {
+			$select.val(target);
+		}
+		scl_pending_grupo_id = 0;
+	}).always(function() {
+		$select.prop('disabled', false);
+	});
+}
+
+function scl_partido_actualizar_labels() {
+	var nombre_local  = jQuery('#scl_partido_equipo_local_id option:selected').text()  || 'Local';
+	var nombre_visita = jQuery('#scl_partido_equipo_visita_id option:selected').text() || 'Visitante';
+	jQuery('#scl_partido_label_local').text(nombre_local);
+	jQuery('#scl_partido_label_visita').text(nombre_visita);
+}
+
+function scl_partido_toggle_penales() {
+	var tipo_fase = jQuery('#scl_partido_tipo_fase').val();
+	var estado    = jQuery('#scl_partido_estado').val();
+	if (tipo_fase !== 'playoff' || estado !== 'finalizado') {
+		jQuery('#scl_partido_penales_seccion').hide();
+		return;
+	}
+	var gl = jQuery('#scl_partido_goles_local').val();
+	var gv = jQuery('#scl_partido_goles_visita').val();
+	var empate = gl !== '' && gv !== '' && parseInt(gl, 10) === parseInt(gv, 10);
+	jQuery('#scl_partido_penales_seccion').toggle(empate);
+}
+
+jQuery(document).ready(function($) {
+
+	// Nuevo partido
+	$(document).on('click', '#scl_nuevo_partido_btn', function() {
+		scl_partido_nuevo();
+	});
+
+	// Filtros → recargar con params en URL
+	$(document).on('change', '.scl-filtros select[data-param]', function() {
+		var url   = new URL(window.location.href);
+		var param = $(this).data('param');
+		var val   = $(this).val();
+		if (val && val !== '0') {
+			url.searchParams.set(param, val);
+		} else {
+			url.searchParams.delete(param);
+		}
+		window.location.href = url.toString();
+	});
+
+	// Abrir drawer resultado rápido
+	$(document).on('click', '.scl-resultado-btn', function() {
+		var $b = $(this);
+		scl_resultado_abrir({
+			id:            $b.data('id'),
+			tipo_fase:     $b.data('tipo-fase'),
+			nombre_local:  $b.data('nombre-local'),
+			nombre_visita: $b.data('nombre-visita'),
+			escudo_local:  $b.attr('data-escudo-local'),
+			escudo_visita: $b.attr('data-escudo-visita'),
+			goles_local:   $b.data('goles-local'),
+			goles_visita:  $b.data('goles-visita'),
+		});
+	});
+
+	// Cerrar drawer resultado
+	$(document).on('click', '#scl_resultado_cerrar, #scl_resultado_cancelar', function() {
+		scl_drawer_cerrar('scl_resultado_drawer');
+	});
+
+	// Toggle penales en drawer resultado
+	$(document).on('input', '#scl_resultado_goles_local, #scl_resultado_goles_visita', function() {
+		scl_resultado_toggle_penales();
+	});
+
+	// Guardar resultado rápido
+	$(document).on('click', '#scl_resultado_guardar', function() {
+		var partido_id = parseInt($('#scl_resultado_partido_id').val()) || 0;
+		if (!partido_id) return;
+
+		var data = {
+			action:         'scl_guardar_resultado',
+			nonce:          scl_ajax.nonce,
+			partido_id:     partido_id,
+			estado:         $('#scl_resultado_estado').val(),
+			goles_local:    $('#scl_resultado_goles_local').val().trim(),
+			goles_visita:   $('#scl_resultado_goles_visita').val().trim(),
+			penales_local:  $('#scl_resultado_penales_local').val().trim(),
+			penales_visita: $('#scl_resultado_penales_visita').val().trim(),
+		};
+
+		var $btn = $(this);
+		$btn.prop('disabled', true).text('Guardando...');
+
+		$.post(scl_ajax.url, data, function(res) {
+			if (res.success) {
+				scl_drawer_cerrar('scl_resultado_drawer');
+				sessionStorage.setItem('scl_flash', 'Resultado guardado correctamente.');
+				window.location.reload();
+			} else {
+				scl_flash(res.data || 'Error al guardar resultado.', 'error');
+				$btn.prop('disabled', false).text('Guardar resultado');
+			}
+		}).fail(function() {
+			scl_flash('Error de conexión.', 'error');
+			$btn.prop('disabled', false).text('Guardar resultado');
+		});
+	});
+
+	// Abrir drawer partido completo (editar)
+	$(document).on('click', '.scl-partido-editar-btn', function() {
+		try {
+			var data = JSON.parse($(this).attr('data-partido'));
+			scl_partido_editar(data);
+		} catch(e) {
+			scl_flash('Error al leer datos del partido.', 'error');
+		}
+	});
+
+	// Cerrar drawer partido completo
+	$(document).on('click', '#scl_partido_cerrar, #scl_partido_cancelar', function() {
+		scl_drawer_cerrar('scl_partido_drawer');
+	});
+
+	// Eliminar partido
+	$(document).on('click', '.scl-partido-eliminar-btn', function() {
+		var id     = $(this).data('id');
+		var titulo = $(this).data('titulo');
+		if (!confirm('¿Eliminar el partido "' + titulo + '"? Esta acción no se puede deshacer.')) return;
+		$.post(scl_ajax.url, {
+			action:     'scl_eliminar_partido',
+			nonce:      scl_ajax.nonce,
+			partido_id: id,
+		}, function(res) {
+			if (res.success) {
+				$('#scl-partido-' + id).fadeOut(300, function() { $(this).remove(); });
+				scl_flash('Partido eliminado.');
+			} else {
+				scl_flash(res.data || 'No se pudo eliminar.', 'error');
+			}
+		});
+	});
+
+	// Estado → mostrar/ocultar marcador
+	$(document).on('change', '#scl_partido_estado', function() {
+		if ($(this).val() === 'finalizado') {
+			$('#scl_partido_marcador_fields').show();
+		} else {
+			$('#scl_partido_marcador_fields').hide();
+			$('#scl_partido_penales_seccion').hide();
+		}
+	});
+
+	// Tipo de fase → grupo y jornada
+	$(document).on('change', '#scl_partido_tipo_fase', function() {
+		var es_playoff = $(this).val() === 'playoff';
+		$('#scl_partido_grupo_field').toggle(!es_playoff);
+		$('#scl_partido_jornada_field').toggle(!es_playoff);
+		scl_partido_toggle_penales();
+	});
+
+	// Torneo → cargar grupos
+	$(document).on('change', '#scl_partido_torneo_id', function() {
+		var torneo_id = parseInt($(this).val()) || 0;
+		if (torneo_id) {
+			scl_cargar_grupos(torneo_id, 0);
+		} else {
+			$('#scl_partido_grupo_id').html('<option value="">— Sin grupo / grupo único —</option>');
+		}
+	});
+
+	// Equipos → actualizar labels en marcador
+	$(document).on('change', '#scl_partido_equipo_local_id, #scl_partido_equipo_visita_id', function() {
+		scl_partido_actualizar_labels();
+	});
+
+	// Goles en drawer completo → toggle penales
+	$(document).on('input', '#scl_partido_goles_local, #scl_partido_goles_visita', function() {
+		scl_partido_toggle_penales();
+	});
+
+	// Guardar partido (crear o editar)
+	$(document).on('click', '#scl_partido_guardar', function() {
+		var partido_id = parseInt($('#scl_partido_id').val()) || 0;
+		var torneo_id  = parseInt($('#scl_partido_torneo_id').val()) || 0;
+		var temporada  = parseInt($('#scl_partido_temporada_id').val()) || 0;
+		var tipo_fase  = $('#scl_partido_tipo_fase').val();
+		var equipo_l   = parseInt($('#scl_partido_equipo_local_id').val()) || 0;
+		var equipo_v   = parseInt($('#scl_partido_equipo_visita_id').val()) || 0;
+
+		if (!torneo_id) {
+			scl_flash('Selecciona un torneo.', 'error');
+			$('#scl_partido_torneo_id').focus();
+			return;
+		}
+		if (!temporada) {
+			scl_flash('Selecciona una temporada.', 'error');
+			$('#scl_partido_temporada_id').focus();
+			return;
+		}
+		if (!equipo_l || !equipo_v) {
+			scl_flash('Selecciona ambos equipos.', 'error');
+			return;
+		}
+		if (equipo_l === equipo_v) {
+			scl_flash('El equipo local y visitante no pueden ser el mismo.', 'error');
+			return;
+		}
+
+		var estado  = $('#scl_partido_estado').val();
+		var goles_l = '', goles_v = '', pen_l = '', pen_v = '';
+		if (estado === 'finalizado') {
+			goles_l = $('#scl_partido_goles_local').val().trim();
+			goles_v = $('#scl_partido_goles_visita').val().trim();
+			pen_l   = $('#scl_partido_penales_local').val().trim();
+			pen_v   = $('#scl_partido_penales_visita').val().trim();
+		}
+
+		var jornada  = '';
+		var grupo_id = 0;
+		if (tipo_fase !== 'playoff') {
+			jornada  = $('#scl_partido_jornada').val().trim();
+			grupo_id = parseInt($('#scl_partido_grupo_id').val()) || 0;
+		}
+
+		var data = {
+			action:           partido_id ? 'scl_editar_partido' : 'scl_crear_partido',
+			nonce:            scl_ajax.nonce,
+			partido_id:       partido_id,
+			torneo_id:        torneo_id,
+			temporada_id:     temporada,
+			tipo_fase:        tipo_fase,
+			grupo_id:         grupo_id,
+			jornada:          jornada,
+			equipo_local_id:  equipo_l,
+			equipo_visita_id: equipo_v,
+			fecha:            $('#scl_partido_fecha').val(),
+			estado:           estado,
+			goles_local:      goles_l,
+			goles_visita:     goles_v,
+			penales_local:    pen_l,
+			penales_visita:   pen_v,
+		};
+
+		var $btn = $(this);
+		$btn.prop('disabled', true).text('Guardando...');
+
+		$.post(scl_ajax.url, data, function(res) {
+			if (res.success) {
+				scl_drawer_cerrar('scl_partido_drawer');
+				sessionStorage.setItem('scl_flash', 'Partido guardado correctamente.');
+				window.location.reload();
+			} else {
+				scl_flash(res.data || 'Error al guardar partido.', 'error');
+				$btn.prop('disabled', false).text('Guardar partido');
+			}
+		}).fail(function() {
+			scl_flash('Error de conexión.', 'error');
+			$btn.prop('disabled', false).text('Guardar partido');
+		});
+	});
+
+});

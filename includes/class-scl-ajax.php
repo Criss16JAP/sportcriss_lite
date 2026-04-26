@@ -39,6 +39,12 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_eliminar_equipo', [ $this, 'ajax_eliminar_equipo' ] );
 		$loader->add_action( 'wp_ajax_scl_subir_escudo',    [ $this, 'ajax_subir_escudo' ] );
 		$loader->add_action( 'wp_ajax_scl_get_equipos',     [ $this, 'ajax_get_equipos' ] );
+		// Sprint 6: Partidos
+		$loader->add_action( 'wp_ajax_scl_crear_partido',    [ $this, 'ajax_crear_partido' ] );
+		$loader->add_action( 'wp_ajax_scl_guardar_resultado',[ $this, 'ajax_guardar_resultado' ] );
+		$loader->add_action( 'wp_ajax_scl_editar_partido',   [ $this, 'ajax_editar_partido' ] );
+		$loader->add_action( 'wp_ajax_scl_eliminar_partido', [ $this, 'ajax_eliminar_partido' ] );
+		$loader->add_action( 'wp_ajax_scl_get_partidos',     [ $this, 'ajax_get_partidos' ] );
 	}
 
 	public function get_grupos_por_torneo(): void {
@@ -535,5 +541,352 @@ class Scl_Ajax {
 		wp_send_json_success( [
 			'ganador' => get_the_title( $ganador_id ),
 		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint 6: Handlers de Partidos
+	// -----------------------------------------------------------------------
+
+	public function ajax_crear_partido(): void {
+		$this->verificar_permisos();
+
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
+		$local_id  = absint( $_POST['equipo_local_id'] ?? 0 );
+		$visita_id = absint( $_POST['equipo_visita_id'] ?? 0 );
+
+		if ( ! $torneo_id || ! $local_id || ! $visita_id ) {
+			wp_send_json_error( 'Torneo y ambos equipos son obligatorios.' );
+		}
+		if ( $local_id === $visita_id ) {
+			wp_send_json_error( 'El equipo local y visitante no pueden ser el mismo.' );
+		}
+
+		$torneo = get_post( $torneo_id );
+		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
+			|| ( (int) $torneo->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) ) {
+			wp_send_json_error( 'Torneo no válido.' );
+		}
+
+		$estado    = in_array( $_POST['estado'] ?? '', [ 'pendiente', 'finalizado' ], true )
+					 ? $_POST['estado'] : 'pendiente';
+		$tipo_fase = in_array( $_POST['tipo_fase'] ?? '', [ 'grupos', 'playoff' ], true )
+					 ? $_POST['tipo_fase'] : 'grupos';
+
+		// Insertar como draft para que el motor no dispare antes de tener las metas
+		$partido_id = wp_insert_post( [
+			'post_type'   => 'scl_partido',
+			'post_title'  => 'Partido',
+			'post_status' => 'draft',
+			'post_author' => get_current_user_id(),
+		] );
+
+		if ( is_wp_error( $partido_id ) ) {
+			wp_send_json_error( 'Error al crear el partido.' );
+		}
+
+		update_post_meta( $partido_id, 'scl_partido_torneo_id',        $torneo_id );
+		update_post_meta( $partido_id, 'scl_partido_equipo_local_id',  $local_id );
+		update_post_meta( $partido_id, 'scl_partido_equipo_visita_id', $visita_id );
+		update_post_meta( $partido_id, 'scl_partido_tipo_fase',        $tipo_fase );
+		update_post_meta( $partido_id, 'scl_partido_estado',           $estado );
+		update_post_meta( $partido_id, 'scl_partido_fecha',
+			sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) ) );
+
+		if ( 'finalizado' === $estado ) {
+			update_post_meta( $partido_id, 'scl_partido_goles_local',
+				absint( $_POST['goles_local'] ?? 0 ) );
+			update_post_meta( $partido_id, 'scl_partido_goles_visita',
+				absint( $_POST['goles_visita'] ?? 0 ) );
+		} else {
+			update_post_meta( $partido_id, 'scl_partido_goles_local',  '' );
+			update_post_meta( $partido_id, 'scl_partido_goles_visita', '' );
+		}
+
+		// Taxonomía temporada
+		$temporada_term_id = absint( $_POST['temporada_term_id'] ?? 0 );
+		if ( $temporada_term_id ) {
+			wp_set_post_terms( $partido_id, [ $temporada_term_id ], 'scl_temporada' );
+		}
+
+		// Jornada: buscar o crear el término
+		$jornada_nombre = sanitize_text_field( wp_unslash( $_POST['jornada'] ?? '' ) );
+		if ( $jornada_nombre ) {
+			$term    = get_term_by( 'name', $jornada_nombre, 'scl_jornada' );
+			$term_id = $term ? $term->term_id : 0;
+			if ( ! $term_id ) {
+				$result  = wp_insert_term( $jornada_nombre, 'scl_jornada' );
+				$term_id = is_wp_error( $result ) ? 0 : $result['term_id'];
+			}
+			if ( $term_id ) {
+				wp_set_post_terms( $partido_id, [ $term_id ], 'scl_jornada' );
+			}
+		}
+
+		// Grupo
+		$grupo_id = absint( $_POST['grupo_id'] ?? 0 );
+		if ( $grupo_id ) {
+			update_post_meta( $partido_id, 'scl_partido_grupo_id', $grupo_id );
+		}
+
+		// Publicar con título auto-generado — dispara save_post_scl_partido con metas ya guardadas
+		$titulo = get_the_title( $local_id ) . ' vs ' . get_the_title( $visita_id );
+		wp_update_post( [
+			'ID'          => $partido_id,
+			'post_title'  => $titulo,
+			'post_status' => 'publish',
+		] );
+
+		wp_send_json_success( [ 'partido_id' => $partido_id ] );
+	}
+
+	public function ajax_guardar_resultado(): void {
+		$this->verificar_permisos();
+
+		$partido_id = absint( $_POST['partido_id'] ?? 0 );
+		$post       = get_post( $partido_id );
+
+		if ( ! $post || 'scl_partido' !== $post->post_type ) {
+			wp_send_json_error( 'Partido no válido.' );
+		}
+
+		// Verificar propiedad — Sprint 6.5 añadirá verificación para colaboradores
+		$es_propietario = ( (int) $post->post_author === get_current_user_id() );
+		if ( ! $es_propietario && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
+		}
+
+		$estado = in_array( $_POST['estado'] ?? '', [ 'pendiente', 'finalizado' ], true )
+				  ? $_POST['estado'] : 'finalizado';
+
+		update_post_meta( $partido_id, 'scl_partido_estado', $estado );
+
+		if ( 'finalizado' === $estado ) {
+			$goles_local  = absint( $_POST['goles_local']  ?? 0 );
+			$goles_visita = absint( $_POST['goles_visita'] ?? 0 );
+			update_post_meta( $partido_id, 'scl_partido_goles_local',  $goles_local );
+			update_post_meta( $partido_id, 'scl_partido_goles_visita', $goles_visita );
+
+			// Penales para playoff con empate (provisional hasta Sprint 7 / llaves)
+			$tipo_fase = get_post_meta( $partido_id, 'scl_partido_tipo_fase', true );
+			if ( 'playoff' === $tipo_fase && $goles_local === $goles_visita ) {
+				if ( isset( $_POST['penales_local'] ) ) {
+					update_post_meta( $partido_id, 'scl_partido_penales_local',
+						absint( $_POST['penales_local'] ) );
+				}
+				if ( isset( $_POST['penales_visita'] ) ) {
+					update_post_meta( $partido_id, 'scl_partido_penales_visita',
+						absint( $_POST['penales_visita'] ) );
+				}
+			}
+		} else {
+			update_post_meta( $partido_id, 'scl_partido_goles_local',  '' );
+			update_post_meta( $partido_id, 'scl_partido_goles_visita', '' );
+		}
+
+		// Disparar motor de cálculo y evaluador de llaves
+		do_action( 'save_post_scl_partido', $partido_id, get_post( $partido_id ), false );
+
+		$local_id     = absint( get_post_meta( $partido_id, 'scl_partido_equipo_local_id',  true ) );
+		$visita_id    = absint( get_post_meta( $partido_id, 'scl_partido_equipo_visita_id', true ) );
+		$gl           = get_post_meta( $partido_id, 'scl_partido_goles_local',  true );
+		$gv           = get_post_meta( $partido_id, 'scl_partido_goles_visita', true );
+		$marcador     = ( $gl !== '' && $gv !== '' ) ? "{$gl} - {$gv}" : '— vs —';
+
+		wp_send_json_success( [
+			'marcador' => $marcador,
+			'estado'   => $estado,
+			'titulo'   => get_the_title( $local_id ) . ' vs ' . get_the_title( $visita_id ),
+		] );
+	}
+
+	public function ajax_editar_partido(): void {
+		$this->verificar_permisos();
+
+		$partido_id = absint( $_POST['partido_id'] ?? 0 );
+		$post       = get_post( $partido_id );
+
+		if ( ! $post || 'scl_partido' !== $post->post_type ) {
+			wp_send_json_error( 'Partido no válido.' );
+		}
+		if ( (int) $post->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
+		}
+
+		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
+		$local_id  = absint( $_POST['equipo_local_id'] ?? 0 );
+		$visita_id = absint( $_POST['equipo_visita_id'] ?? 0 );
+
+		if ( ! $torneo_id || ! $local_id || ! $visita_id ) {
+			wp_send_json_error( 'Torneo y ambos equipos son obligatorios.' );
+		}
+		if ( $local_id === $visita_id ) {
+			wp_send_json_error( 'El equipo local y visitante no pueden ser el mismo.' );
+		}
+
+		$estado    = in_array( $_POST['estado'] ?? '', [ 'pendiente', 'finalizado' ], true )
+					 ? $_POST['estado'] : 'pendiente';
+		$tipo_fase = in_array( $_POST['tipo_fase'] ?? '', [ 'grupos', 'playoff' ], true )
+					 ? $_POST['tipo_fase'] : 'grupos';
+
+		update_post_meta( $partido_id, 'scl_partido_torneo_id',        $torneo_id );
+		update_post_meta( $partido_id, 'scl_partido_equipo_local_id',  $local_id );
+		update_post_meta( $partido_id, 'scl_partido_equipo_visita_id', $visita_id );
+		update_post_meta( $partido_id, 'scl_partido_tipo_fase',        $tipo_fase );
+		update_post_meta( $partido_id, 'scl_partido_estado',           $estado );
+		update_post_meta( $partido_id, 'scl_partido_fecha',
+			sanitize_text_field( wp_unslash( $_POST['fecha'] ?? '' ) ) );
+
+		if ( 'finalizado' === $estado ) {
+			update_post_meta( $partido_id, 'scl_partido_goles_local',
+				absint( $_POST['goles_local'] ?? 0 ) );
+			update_post_meta( $partido_id, 'scl_partido_goles_visita',
+				absint( $_POST['goles_visita'] ?? 0 ) );
+		} else {
+			update_post_meta( $partido_id, 'scl_partido_goles_local',  '' );
+			update_post_meta( $partido_id, 'scl_partido_goles_visita', '' );
+		}
+
+		// Temporada
+		$temporada_term_id = absint( $_POST['temporada_term_id'] ?? 0 );
+		wp_set_post_terms( $partido_id,
+			$temporada_term_id ? [ $temporada_term_id ] : [],
+			'scl_temporada' );
+
+		// Jornada
+		$jornada_nombre = sanitize_text_field( wp_unslash( $_POST['jornada'] ?? '' ) );
+		if ( $jornada_nombre ) {
+			$term    = get_term_by( 'name', $jornada_nombre, 'scl_jornada' );
+			$term_id = $term ? $term->term_id : 0;
+			if ( ! $term_id ) {
+				$result  = wp_insert_term( $jornada_nombre, 'scl_jornada' );
+				$term_id = is_wp_error( $result ) ? 0 : $result['term_id'];
+			}
+			wp_set_post_terms( $partido_id, $term_id ? [ $term_id ] : [], 'scl_jornada' );
+		} else {
+			wp_set_post_terms( $partido_id, [], 'scl_jornada' );
+		}
+
+		// Grupo
+		update_post_meta( $partido_id, 'scl_partido_grupo_id', absint( $_POST['grupo_id'] ?? 0 ) );
+
+		// Actualizar título y disparar motor
+		$titulo = get_the_title( $local_id ) . ' vs ' . get_the_title( $visita_id );
+		wp_update_post( [ 'ID' => $partido_id, 'post_title' => $titulo ] );
+
+		wp_send_json_success( [ 'success' => true ] );
+	}
+
+	public function ajax_eliminar_partido(): void {
+		$this->verificar_permisos();
+
+		$partido_id = absint( $_POST['partido_id'] ?? 0 );
+		$post       = get_post( $partido_id );
+
+		if ( ! $post || 'scl_partido' !== $post->post_type ) {
+			wp_send_json_error( 'Partido no válido.' );
+		}
+		if ( (int) $post->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
+		}
+
+		$llave_id = absint( get_post_meta( $partido_id, 'scl_partido_llave_id', true ) );
+		if ( $llave_id ) {
+			wp_send_json_error( 'Este partido pertenece a una llave. Elimina la llave primero.' );
+		}
+
+		// Capturar datos antes de eliminar para recalcular si aplica
+		$estado            = get_post_meta( $partido_id, 'scl_partido_estado',    true );
+		$tipo_fase         = get_post_meta( $partido_id, 'scl_partido_tipo_fase', true );
+		$torneo_id         = absint( get_post_meta( $partido_id, 'scl_partido_torneo_id', true ) );
+		$terms             = wp_get_post_terms( $partido_id, 'scl_temporada' );
+		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) )
+							 ? (int) $terms[0]->term_id : 0;
+
+		wp_trash_post( $partido_id );
+
+		// Recalcular tabla si el partido eliminado afectaba la posición
+		if ( 'finalizado' === $estado && 'grupos' === $tipo_fase
+			&& $torneo_id && $temporada_term_id ) {
+			( new Scl_Engine() )->recalcular_tabla( $torneo_id, $temporada_term_id );
+		}
+
+		wp_send_json_success( [ 'success' => true ] );
+	}
+
+	public function ajax_get_partidos(): void {
+		$this->verificar_permisos();
+
+		$torneo_id         = absint( $_POST['torneo_id'] ?? 0 );
+		$temporada_term_id = absint( $_POST['temporada_term_id'] ?? 0 );
+		$tipo_fase         = sanitize_key( $_POST['tipo_fase'] ?? '' );
+		$estado_f          = sanitize_key( $_POST['estado'] ?? '' );
+
+		$mis_torneo_ids = get_posts( [
+			'post_type'      => 'scl_torneo',
+			'author'         => get_current_user_id(),
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'fields'         => 'ids',
+		] );
+
+		if ( empty( $mis_torneo_ids ) && ! $torneo_id ) {
+			wp_send_json_success( [] );
+		}
+
+		$meta_query = [
+			[
+				'key'     => 'scl_partido_torneo_id',
+				'value'   => $torneo_id ?: $mis_torneo_ids,
+				'compare' => $torneo_id ? '=' : 'IN',
+				'type'    => 'NUMERIC',
+			],
+		];
+		if ( $tipo_fase ) {
+			$meta_query[] = [ 'key' => 'scl_partido_tipo_fase', 'value' => $tipo_fase ];
+		}
+		if ( $estado_f ) {
+			$meta_query[] = [ 'key' => 'scl_partido_estado', 'value' => $estado_f ];
+		}
+
+		$tax_query = [];
+		if ( $temporada_term_id ) {
+			$tax_query[] = [
+				'taxonomy' => 'scl_temporada',
+				'field'    => 'term_id',
+				'terms'    => $temporada_term_id,
+			];
+		}
+
+		$partidos = get_posts( [
+			'post_type'      => 'scl_partido',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'meta_query'     => $meta_query,
+			'tax_query'      => $tax_query,
+			'orderby'        => 'meta_value',
+			'meta_key'       => 'scl_partido_fecha',
+			'order'          => 'ASC',
+		] );
+
+		$data = array_map( function( $p ) {
+			$local_id  = absint( get_post_meta( $p->ID, 'scl_partido_equipo_local_id',  true ) );
+			$visita_id = absint( get_post_meta( $p->ID, 'scl_partido_equipo_visita_id', true ) );
+			return [
+				'ID'            => $p->ID,
+				'titulo'        => $p->post_title,
+				'torneo_id'     => absint( get_post_meta( $p->ID, 'scl_partido_torneo_id', true ) ),
+				'local_id'      => $local_id,
+				'visita_id'     => $visita_id,
+				'local_nombre'  => get_the_title( $local_id ),
+				'visita_nombre' => get_the_title( $visita_id ),
+				'goles_local'   => get_post_meta( $p->ID, 'scl_partido_goles_local',  true ),
+				'goles_visita'  => get_post_meta( $p->ID, 'scl_partido_goles_visita', true ),
+				'estado'        => get_post_meta( $p->ID, 'scl_partido_estado',       true ),
+				'tipo_fase'     => get_post_meta( $p->ID, 'scl_partido_tipo_fase',    true ),
+				'fecha'         => get_post_meta( $p->ID, 'scl_partido_fecha',        true ),
+			];
+		}, $partidos );
+
+		wp_send_json_success( $data );
 	}
 }

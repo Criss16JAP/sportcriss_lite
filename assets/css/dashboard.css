@@ -480,3 +480,134 @@ body.scl-drawer-active { overflow: hidden; }
 	margin-bottom: 1.25rem;
 }
 .scl-page-title { margin: 0; font-size: 1.5rem; color: var(--scl-primary); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPRINT 6: Partidos
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Filtros ─────────────────────────────────────── */
+.scl-filtros {
+	display: flex; flex-wrap: wrap; gap: 0.5rem;
+	margin-bottom: 1.25rem;
+}
+.scl-filtros select {
+	padding: 7px 10px; font-size: 0.85rem;
+	border: 1px solid var(--scl-border); border-radius: 4px;
+	background: white; cursor: pointer;
+}
+
+/* ── Fase / grupo ────────────────────────────────── */
+.scl-fase-grupo { margin-bottom: 1.5rem; }
+.scl-fase-grupo__titulo {
+	font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em;
+	text-transform: uppercase; color: #888;
+	padding: 4px 0; margin-bottom: 0.5rem;
+	border-bottom: 1px solid var(--scl-border);
+}
+
+/* ── Card de partido ─────────────────────────────── */
+.scl-partido-card {
+	display: flex; flex-direction: column; gap: 0.5rem;
+	padding: 1rem 1.25rem;
+	background: var(--scl-white);
+	border: 1px solid var(--scl-border);
+	border-radius: 8px;
+	margin-bottom: 0.5rem;
+	transition: box-shadow 0.15s;
+}
+.scl-partido-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+
+.scl-partido-card__equipos {
+	display: flex; align-items: center; gap: 0.75rem;
+}
+.scl-partido-card__equipo {
+	display: flex; align-items: center; gap: 0.5rem; flex: 1;
+}
+.scl-partido-card__equipo--visita { flex-direction: row-reverse; }
+
+.scl-partido-card__equipo-nombre {
+	font-weight: 600; font-size: 0.95rem;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.scl-partido-card__marcador {
+	font-size: 1.25rem; font-weight: 800; color: var(--scl-primary);
+	text-align: center; min-width: 60px; flex-shrink: 0;
+}
+.scl-partido-card__marcador--pendiente {
+	font-weight: 400; font-size: 1rem; color: #aaa;
+}
+
+.scl-partido-card__meta {
+	font-size: 0.8rem; color: #888; line-height: 1.6;
+}
+.scl-partido-card__actions {
+	display: flex; gap: 0.5rem; flex-wrap: wrap;
+}
+
+/* ── Escudo pequeño (en cards de partido) ────────── */
+.scl-escudo-sm {
+	width: 36px; height: 36px; flex-shrink: 0;
+	border-radius: 50%; overflow: hidden;
+	border: 1px solid #ddd;
+	display: flex; align-items: center; justify-content: center;
+	background: #f0f4f8;
+	font-size: 0.9rem; font-weight: 700; color: var(--scl-primary);
+}
+.scl-escudo-sm img { width: 100%; height: 100%; object-fit: contain; }
+
+/* ── Drawer panel pequeño (resultado rápido) ─────── */
+.scl-drawer__panel--sm { max-width: 360px; }
+
+/* ── Marcador visual en drawers ──────────────────── */
+.scl-marcador {
+	display: flex; align-items: flex-start; gap: 1rem;
+	justify-content: center; margin: 1rem 0;
+}
+.scl-marcador__equipo {
+	display: flex; flex-direction: column; align-items: center;
+	gap: 0.4rem; flex: 1; max-width: 120px;
+}
+.scl-marcador__equipo--inline {
+	flex-direction: row; align-items: center;
+	max-width: none;
+}
+.scl-marcador__nombre {
+	font-size: 0.85rem; font-weight: 600; text-align: center;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+	max-width: 110px;
+}
+.scl-marcador__nombre--sm { font-size: 0.75rem; max-width: 90px; }
+.scl-marcador__label {
+	font-size: 0.8rem; color: #666; font-weight: 600;
+}
+.scl-marcador__vs {
+	font-size: 1.1rem; font-weight: 700; color: #aaa;
+	align-self: center; flex-shrink: 0;
+}
+.scl-marcador__vs--sm { font-size: 0.9rem; }
+
+.scl-marcador--inline { margin: 0.5rem 0; justify-content: flex-start; }
+.scl-marcador--penales { margin: 0.5rem 0; }
+
+/* ── Input de goles ──────────────────────────────── */
+.scl-goles-input {
+	width: 60px; height: 48px;
+	font-size: 1.5rem; font-weight: 700; text-align: center;
+	border: 2px solid var(--scl-border); border-radius: 6px;
+	padding: 0; -moz-appearance: textfield;
+}
+.scl-goles-input::-webkit-outer-spin-button,
+.scl-goles-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.scl-goles-input:focus { border-color: var(--scl-primary); outline: none; }
+
+/* ── Sección de penales ──────────────────────────── */
+.scl-penales-seccion {
+	background: #f8f9fa; border-radius: 6px;
+	padding: 0.75rem; margin-top: 0.5rem;
+}
+.scl-description--center { text-align: center; }
+
+/* ── Badges adicionales para partidos ────────────── */
+.scl-badge--pendiente  { background: #fff3cd; color: #856404; }
+.scl-badge--finalizado { background: #d4edda; color: #155724; }
+.scl-badge--playoff    { background: #cce5ff; color: #004085; }
