@@ -60,7 +60,6 @@ $home_url = home_url( '/mi-panel/' );
 		</div>
 	</div>
 
-	<?php if ( $licencia_activa ) : ?>
 	<div class="scl-quick-actions">
 		<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'torneos', 'scl_accion' => 'nuevo' ], $home_url ) ); ?>" class="scl-btn scl-btn--primary">
 			+ <?php esc_html_e( 'Crear torneo', 'sportcriss-lite' ); ?>
@@ -69,7 +68,6 @@ $home_url = home_url( '/mi-panel/' );
 			+ <?php esc_html_e( 'Crear equipo', 'sportcriss-lite' ); ?>
 		</a>
 	</div>
-	<?php endif; ?>
 
 	<h2 class="scl-section-title"><?php esc_html_e( 'Mis Torneos Activos', 'sportcriss-lite' ); ?></h2>
 	

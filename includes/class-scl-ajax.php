@@ -66,24 +66,24 @@ class Scl_Ajax {
 
 
 
-	private function check_permission() {
-		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
-		if ( ! in_array( 'scl_organizador', (array) wp_get_current_user()->roles, true ) && ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( 'Sin permisos de organizador.' );
+	private function verificar_permisos(): void {
+		if ( ! check_ajax_referer( 'scl_dashboard_nonce', 'nonce', false ) ) {
+			wp_send_json_error( 'Nonce inválido' );
 		}
-	}
-
-	private function check_license() {
-		if ( ! function_exists( 'scl_licencia_activa' ) || ! scl_licencia_activa( get_current_user_id() ) ) {
-			wp_send_json_error( 'Licencia inactiva o expirada.' );
+		if ( ! is_user_logged_in() ) {
+			wp_send_json_error( 'No autenticado' );
+		}
+		$usuario = wp_get_current_user();
+		$roles_permitidos = [ 'scl_organizador', 'scl_colaborador', 'administrator' ];
+		if ( empty( array_intersect( $roles_permitidos, (array) $usuario->roles ) ) ) {
+			wp_send_json_error( 'Sin permisos' );
 		}
 	}
 
 	public function ajax_crear_torneo() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
-		$titulo = sanitize_text_field( wp_unslash( $_POST['nombre'] ?? '' ) );
+		$titulo = sanitize_text_field( wp_unslash( $_POST['titulo'] ?? $_POST['nombre'] ?? '' ) );
 		if ( ! $titulo ) wp_send_json_error( 'El nombre es requerido.' );
 
 		$post_id = wp_insert_post( [
@@ -102,22 +102,25 @@ class Scl_Ajax {
 		wp_send_json_success( [
 			'success'    => true,
 			'torneo_id'  => $post_id,
-			'torneo_url' => '?scl_ruta=torneos',
+			'torneo_url' => get_permalink( $post_id ),
 		] );
 	}
 
 	public function ajax_editar_torneo() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
 		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
 		$post = get_post( $torneo_id );
 		
-		if ( ! $post || 'scl_torneo' !== $post->post_type || $post->post_author != get_current_user_id() ) {
-			wp_send_json_error( 'Torneo no válido o sin permisos.' );
+		if ( ! $post || 'scl_torneo' !== $post->post_type ) {
+			wp_send_json_error( 'Torneo no válido.' );
+		}
+		
+		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
 		}
 
-		$titulo = sanitize_text_field( wp_unslash( $_POST['nombre'] ?? '' ) );
+		$titulo = sanitize_text_field( wp_unslash( $_POST['titulo'] ?? $_POST['nombre'] ?? '' ) );
 		if ( ! $titulo ) wp_send_json_error( 'El nombre es requerido.' );
 
 		wp_update_post( [
@@ -131,14 +134,17 @@ class Scl_Ajax {
 	}
 
 	public function ajax_eliminar_torneo() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
 		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
 		$post = get_post( $torneo_id );
 		
-		if ( ! $post || 'scl_torneo' !== $post->post_type || $post->post_author != get_current_user_id() ) {
-			wp_send_json_error( 'Torneo no válido o sin permisos.' );
+		if ( ! $post || 'scl_torneo' !== $post->post_type ) {
+			wp_send_json_error( 'Torneo no válido.' );
+		}
+		
+		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
 		}
 
 		wp_trash_post( $torneo_id );
@@ -146,8 +152,7 @@ class Scl_Ajax {
 	}
 
 	public function ajax_subir_imagen_torneo() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
 		if ( empty( $_FILES['file'] ) ) {
 			wp_send_json_error( 'No se ha subido ningún archivo.' );
@@ -170,13 +175,16 @@ class Scl_Ajax {
 	}
 
 	public function ajax_crear_grupo() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
 		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
 		$post = get_post( $torneo_id );
-		if ( ! $post || 'scl_torneo' !== $post->post_type || $post->post_author != get_current_user_id() ) {
-			wp_send_json_error( 'Torneo no válido o sin permisos.' );
+		if ( ! $post || 'scl_torneo' !== $post->post_type ) {
+			wp_send_json_error( 'Torneo no válido.' );
+		}
+		
+		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
 		}
 
 		$nombre = sanitize_text_field( wp_unslash( $_POST['nombre'] ?? '' ) );
@@ -201,14 +209,17 @@ class Scl_Ajax {
 	}
 
 	public function ajax_eliminar_grupo() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
 		$grupo_id = absint( $_POST['grupo_id'] ?? 0 );
 		$post = get_post( $grupo_id );
 		
-		if ( ! $post || 'scl_grupo' !== $post->post_type || $post->post_author != get_current_user_id() ) {
-			wp_send_json_error( 'Grupo no válido o sin permisos.' );
+		if ( ! $post || 'scl_grupo' !== $post->post_type ) {
+			wp_send_json_error( 'Grupo no válido.' );
+		}
+		
+		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
 		}
 
 		wp_trash_post( $grupo_id );
@@ -216,8 +227,7 @@ class Scl_Ajax {
 	}
 
 	public function ajax_crear_temporada() {
-		$this->check_permission();
-		$this->check_license();
+		$this->verificar_permisos();
 
 		$nombre = sanitize_text_field( wp_unslash( $_POST['nombre'] ?? '' ) );
 		if ( ! $nombre ) wp_send_json_error( 'El nombre de la temporada es requerido.' );
@@ -249,28 +259,32 @@ class Scl_Ajax {
 		] );
 	}
 
-	private function guardar_metas_torneo( $post_id ) {
-		update_post_meta( $post_id, 'scl_torneo_siglas', sanitize_text_field( wp_unslash( $_POST['siglas'] ?? '' ) ) );
-		update_post_meta( $post_id, 'scl_torneo_puntos_victoria', absint( $_POST['puntos_victoria'] ?? 3 ) );
-		update_post_meta( $post_id, 'scl_torneo_puntos_empate', absint( $_POST['puntos_empate'] ?? 1 ) );
-		update_post_meta( $post_id, 'scl_torneo_puntos_derrota', absint( $_POST['puntos_derrota'] ?? 0 ) );
-		
-		$desempate = wp_unslash( $_POST['desempate_orden'] ?? '' );
-		if ( $desempate ) {
-			update_post_meta( $post_id, 'scl_torneo_desempate_orden', sanitize_text_field( $desempate ) );
+	private function guardar_metas_torneo( $torneo_id ) {
+		update_post_meta( $torneo_id, 'scl_torneo_siglas', strtoupper( sanitize_text_field( wp_unslash( $_POST['siglas'] ?? '' ) ) ) );
+		update_post_meta( $torneo_id, 'scl_torneo_puntos_victoria', absint( $_POST['puntos_victoria'] ?? 3 ) );
+		update_post_meta( $torneo_id, 'scl_torneo_puntos_empate', absint( $_POST['puntos_empate'] ?? 1 ) );
+		update_post_meta( $torneo_id, 'scl_torneo_puntos_derrota', absint( $_POST['puntos_derrota'] ?? 0 ) );
+		update_post_meta( $torneo_id, 'scl_torneo_color_primario', sanitize_hex_color( wp_unslash( $_POST['color_primario'] ?? '#1a3a5c' ) ) );
+		update_post_meta( $torneo_id, 'scl_torneo_color_secundario', sanitize_hex_color( wp_unslash( $_POST['color_secundario'] ?? '#f5a623' ) ) );
+
+		// Desempate: validar que sea JSON array válido
+		$desempate_raw = wp_unslash( $_POST['desempate_orden'] ?? '[]' );
+		$desempate     = json_decode( $desempate_raw, true );
+		$valores_validos = [ 'diferencia_goles', 'goles_favor', 'goles_contra', 'enfrentamiento_directo' ];
+		if ( is_array( $desempate ) ) {
+			$desempate = array_values( array_intersect( $desempate, $valores_validos ) );
+			update_post_meta( $torneo_id, 'scl_torneo_desempate_orden', wp_json_encode( $desempate ) );
 		}
 
+		// Logo y fondo (attachment IDs)
 		$logo_id = absint( $_POST['logo_id'] ?? 0 );
-		if ( $logo_id ) update_post_meta( $post_id, 'scl_torneo_logo', $logo_id );
-
+		if ( $logo_id ) {
+			update_post_meta( $torneo_id, 'scl_torneo_logo', $logo_id );
+		}
 		$fondo_id = absint( $_POST['fondo_id'] ?? 0 );
-		if ( $fondo_id ) update_post_meta( $post_id, 'scl_torneo_fondo', $fondo_id );
-
-		$color_primario = sanitize_hex_color( wp_unslash( $_POST['color_primario'] ?? '' ) );
-		if ( $color_primario ) update_post_meta( $post_id, 'scl_torneo_color_primario', $color_primario );
-		
-		$color_secundario = sanitize_hex_color( wp_unslash( $_POST['color_secundario'] ?? '' ) );
-		if ( $color_secundario ) update_post_meta( $post_id, 'scl_torneo_color_secundario', $color_secundario );
+		if ( $fondo_id ) {
+			update_post_meta( $torneo_id, 'scl_torneo_fondo', $fondo_id );
+		}
 	}
 
 

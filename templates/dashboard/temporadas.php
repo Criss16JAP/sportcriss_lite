@@ -13,9 +13,7 @@ $temporadas = get_terms( [
 ?>
 <div class="scl-dashboard-header">
 	<h2>Temporadas</h2>
-	<?php if ( $licencia_activa ) : ?>
-		<button type="button" class="scl-btn scl-btn--primary" id="scl_btn_nueva_temporada">+ Nueva temporada</button>
-	<?php endif; ?>
+	<button type="button" class="scl-btn scl-btn--primary" id="scl_btn_nueva_temporada">+ Nueva temporada</button>
 </div>
 
 <div class="scl-flash scl-flash--warning" style="margin-bottom: 20px;">

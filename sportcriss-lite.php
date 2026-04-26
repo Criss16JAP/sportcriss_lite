@@ -41,7 +41,6 @@ require_once SCL_PATH . 'includes/class-scl-dashboard.php';
 require_once SCL_PATH . 'includes/class-scl-ajax.php';
 require_once SCL_PATH . 'includes/class-scl-public.php';
 require_once SCL_PATH . 'includes/class-scl-export.php';
-require_once SCL_PATH . 'includes/class-scl-license.php';
 
 // ---------------------------------------------------------------------------
 // Hooks de activación y desactivación
@@ -136,10 +135,6 @@ function scl_run() {
 	// Exportación visual
 	$export = new Scl_Export();
 	$loader->add_action( 'template_redirect', [ $export, 'servir_vista_limpia' ] );
-
-	// Licencias: verificación diaria vía WP Cron
-	$license = new Scl_License();
-	$loader->add_action( 'scl_verificar_licencias_diario', [ $license, 'verificar_todas' ] );
 
 	$loader->run();
 }

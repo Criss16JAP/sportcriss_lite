@@ -52,33 +52,23 @@ class Scl_Dashboard {
 		}
 
 		$usuario = wp_get_current_user();
-		if ( ! in_array( 'scl_organizador', (array) $usuario->roles, true ) && ! in_array( 'administrator', (array) $usuario->roles, true ) ) {
-			return '<p>' . esc_html__( 'No tienes permiso para acceder a este panel.', 'sportcriss-lite' ) . '</p>';
+		$roles_permitidos = [ 'scl_organizador', 'scl_colaborador', 'administrator' ];
+		if ( empty( array_intersect( $roles_permitidos, (array) $usuario->roles ) ) ) {
+			return '<p>No tienes permiso para acceder a este panel.</p>';
 		}
-
-		// Para Sprint 3, la licencia siempre es activa. (Sprint 11 implementará validación)
-		$licencia_activa = true;
 
 		$ruta   = get_query_var( 'scl_ruta', 'home' );
 		$id     = (int) get_query_var( 'scl_id', 0 );
 		$accion = sanitize_key( get_query_var( 'scl_accion', '' ) );
 
 		ob_start();
-
-		$this->render_header( $usuario, $licencia_activa );
-
-		if ( ! $licencia_activa ) {
-			$this->render_banner_licencia();
-		}
-
-		$this->dispatch( $ruta, $id, $accion, $licencia_activa );
-
+		$this->render_header( $usuario );
+		$this->dispatch( $ruta, $id, $accion );
 		$this->render_footer();
-
 		return ob_get_clean();
 	}
 
-	private function dispatch( string $ruta, int $id, string $accion, bool $licencia_activa ): void {
+	private function dispatch( string $ruta, int $id, string $accion ): void {
 		$templates = [
 			'home'       => 'dashboard/home.php',
 			'torneos'    => 'dashboard/torneos-lista.php',
@@ -106,7 +96,7 @@ class Scl_Dashboard {
 		}
 	}
 
-	private function render_header( $usuario, $licencia_activa ) {
+	private function render_header( $usuario ) {
 		$logout_url = wp_logout_url( home_url() );
 		$home_url   = home_url( '/mi-panel/' );
 		?>
@@ -137,12 +127,5 @@ class Scl_Dashboard {
 		<?php
 	}
 
-	private function render_banner_licencia() {
-		?>
-		<div class="scl-banner scl-banner--warning">
-			<?php esc_html_e( '⚠ Tu licencia ha vencido. El panel está en modo solo lectura.', 'sportcriss-lite' ); ?>
-			<a href="#"><?php esc_html_e( 'Renovar licencia', 'sportcriss-lite' ); ?></a>
-		</div>
-		<?php
-	}
+
 }

@@ -26,9 +26,7 @@ $grupos = get_posts( [
 		<a href="?scl_ruta=torneos" class="scl-btn scl-btn--ghost" style="padding: 0; margin-right: 10px;">&larr; Mis Torneos</a>
 		Grupos de: <?php echo esc_html( $torneo->post_title ); ?>
 	</h2>
-	<?php if ( $licencia_activa ) : ?>
 		<button type="button" class="scl-btn scl-btn--primary" id="scl_btn_nuevo_grupo">+ Nuevo grupo</button>
-	<?php endif; ?>
 </div>
 
 <div class="scl-inline-form" id="scl_grupo_form" style="display:none">
@@ -63,11 +61,9 @@ $grupos = get_posts( [
 						<p><?php echo esc_html( $desc ); ?></p>
 					<?php endif; ?>
 				</div>
-				<?php if ( $licencia_activa ) : ?>
 				<div class="scl-grupo-item__actions">
 					<button type="button" class="scl-btn scl-btn--outline" onclick="scl_confirmar_eliminar_grupo(<?php echo esc_attr( $g->ID ); ?>, '<?php echo esc_js( $g->post_title ); ?>')">Eliminar</button>
 				</div>
-				<?php endif; ?>
 			</div>
 		<?php endforeach; ?>
 	</div>

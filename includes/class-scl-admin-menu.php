@@ -152,7 +152,7 @@ class Scl_Admin_Menu {
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Configuración de SportCriss Lite', 'sportcriss-lite' ); ?></h1>
-			<p><?php esc_html_e( 'Las opciones de configuración se implementarán en el Sprint 11 (integración con el servidor de licencias).', 'sportcriss-lite' ); ?></p>
+			<p><?php esc_html_e( 'Próximamente habrá más opciones de configuración aquí.', 'sportcriss-lite' ); ?></p>
 		</div>
 		<?php
 	}

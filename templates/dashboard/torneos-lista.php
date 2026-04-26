@@ -15,9 +15,7 @@ $torneos = get_posts( [
 ?>
 <div class="scl-dashboard-header">
 	<h2>Mis Torneos</h2>
-	<?php if ( $licencia_activa ) : ?>
-		<a href="?scl_ruta=torneos&scl_accion=nuevo" class="scl-btn scl-btn--primary">+ Nuevo torneo</a>
-	<?php endif; ?>
+	<a href="?scl_ruta=torneos&scl_accion=nuevo" class="scl-btn scl-btn--primary">+ Nuevo torneo</a>
 </div>
 
 <div class="scl-dashboard-search">
@@ -27,9 +25,7 @@ $torneos = get_posts( [
 <?php if ( empty( $torneos ) ) : ?>
 	<div class="scl-empty">
 		<p>Aún no tienes torneos creados.</p>
-		<?php if ( $licencia_activa ) : ?>
-			<a href="?scl_ruta=torneos&scl_accion=nuevo" class="scl-btn scl-btn--primary">Crear mi primer torneo</a>
-		<?php endif; ?>
+		<a href="?scl_ruta=torneos&scl_accion=nuevo" class="scl-btn scl-btn--primary">Crear mi primer torneo</a>
 	</div>
 <?php else : ?>
 	<div class="scl-torneos-grid">
@@ -59,10 +55,8 @@ $torneos = get_posts( [
 				<div class="scl-torneo-card__actions">
 					<a href="?scl_ruta=partidos&scl_torneo_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline">Ver partidos</a>
 					<a href="?scl_ruta=grupos&scl_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline">Grupos</a>
-					<?php if ( $licencia_activa ) : ?>
-						<a href="?scl_ruta=torneos&scl_id=<?php echo esc_attr( $t->ID ); ?>&scl_accion=editar" class="scl-btn scl-btn--outline">Editar</a>
-						<button type="button" class="scl-btn scl-btn--danger" onclick="scl_confirmar_eliminar_torneo(<?php echo esc_attr( $t->ID ); ?>, '<?php echo esc_js( $t->post_title ); ?>')">Eliminar</button>
-					<?php endif; ?>
+					<a href="?scl_ruta=torneos&scl_id=<?php echo esc_attr( $t->ID ); ?>&scl_accion=editar" class="scl-btn scl-btn--outline">Editar</a>
+					<button type="button" class="scl-btn scl-btn--danger" onclick="scl_confirmar_eliminar_torneo(<?php echo esc_attr( $t->ID ); ?>, '<?php echo esc_js( $t->post_title ); ?>')">Eliminar</button>
 				</div>
 			</div>
 		<?php endforeach; ?>

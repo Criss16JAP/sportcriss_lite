@@ -118,35 +118,55 @@ jQuery(document).ready(function($) {
 		var torneoId = parseInt($('#scl_torneo_id').val()) || 0;
 		var action = torneoId ? 'scl_editar_torneo' : 'scl_crear_torneo';
 
+		// Serializar orden de desempate desde la lista sortable
+		var orden = [];
+		$('#scl_desempate_lista .scl-sortable__item[data-value]').each(function() {
+			orden.push($(this).data('value'));
+		});
+		$('#scl_desempate_orden').val(JSON.stringify(orden));
+
+		// Recoger todos los campos
 		var data = {
 			action: action,
 			nonce: scl_ajax.nonce,
 			torneo_id: torneoId,
-			nombre: $('#scl_nombre').val(),
-			siglas: $('#scl_siglas').val(),
-			logo_id: $('#scl_logo_id').val(),
+			titulo: $('#scl_nombre').val().trim(),
+			siglas: $('#scl_siglas').val().trim().toUpperCase(),
 			puntos_victoria: $('#scl_victoria').val(),
 			puntos_empate: $('#scl_empate').val(),
 			puntos_derrota: $('#scl_derrota').val(),
 			desempate_orden: $('#scl_desempate_orden').val(),
 			color_primario: $('#scl_color_primario').val(),
 			color_secundario: $('#scl_color_secundario').val(),
-			fondo_id: $('#scl_fondo_id').val()
+			logo_id: $('#scl_logo_id').val() || 0,
+			fondo_id: $('#scl_fondo_id').val() || 0
 		};
+
+		// Validación mínima antes de enviar
+		if (!data.titulo) {
+			scl_flash('El nombre del torneo es obligatorio.', 'error');
+			$('#scl_nombre').focus();
+			return;
+		}
+		if (!data.siglas) {
+			scl_flash('Las siglas son obligatorias.', 'error');
+			$('#scl_siglas').focus();
+			return;
+		}
 
 		var $btn = $(this);
 		$btn.prop('disabled', true).text('Guardando...');
 
 		$.post(scl_ajax.url, data, function(res) {
 			if (res.success) {
-				sessionStorage.setItem('scl_flash', 'Torneo guardado exitosamente.');
-				window.location.href = res.data && res.data.torneo_url ? window.scl_url('torneos') : window.scl_url('torneos');
+				sessionStorage.setItem('scl_flash', 'Torneo guardado correctamente.');
+				window.location.href = window.scl_url('torneos');
 			} else {
-				scl_flash(res.data || 'Error al guardar', 'error');
+				scl_flash(res.data || 'Error al guardar.', 'error');
 				$btn.prop('disabled', false).text('Guardar torneo');
 			}
 		}).fail(function() {
-			scl_flash('Error de conexión', 'error');
+			scl_flash('Error de conexión. Intenta de nuevo.', 'error');
 			$btn.prop('disabled', false).text('Guardar torneo');
 		});
 	});
