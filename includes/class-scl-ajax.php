@@ -33,6 +33,12 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_eliminar_grupo', [ $this, 'ajax_eliminar_grupo' ] );
 		$loader->add_action( 'wp_ajax_scl_crear_temporada', [ $this, 'ajax_crear_temporada' ] );
 		$loader->add_action( 'wp_ajax_scl_confirmar_ganador_llave', [ $this, 'ajax_confirmar_ganador_llave' ] );
+		// Sprint 5: Equipos
+		$loader->add_action( 'wp_ajax_scl_crear_equipo',    [ $this, 'ajax_crear_equipo' ] );
+		$loader->add_action( 'wp_ajax_scl_editar_equipo',   [ $this, 'ajax_editar_equipo' ] );
+		$loader->add_action( 'wp_ajax_scl_eliminar_equipo', [ $this, 'ajax_eliminar_equipo' ] );
+		$loader->add_action( 'wp_ajax_scl_subir_escudo',    [ $this, 'ajax_subir_escudo' ] );
+		$loader->add_action( 'wp_ajax_scl_get_equipos',     [ $this, 'ajax_get_equipos' ] );
 	}
 
 	public function get_grupos_por_torneo(): void {
@@ -287,6 +293,195 @@ class Scl_Ajax {
 		}
 	}
 
+
+	// -----------------------------------------------------------------------
+	// Sprint 5: Handlers de Equipos
+	// -----------------------------------------------------------------------
+
+	public function ajax_crear_equipo(): void {
+		$this->verificar_permisos();
+
+		$nombre = sanitize_text_field( wp_unslash( $_POST['nombre'] ?? '' ) );
+		if ( empty( $nombre ) ) {
+			wp_send_json_error( 'El nombre del equipo es obligatorio.' );
+		}
+
+		$existente = get_posts( [
+			'post_type'      => 'scl_equipo',
+			'author'         => get_current_user_id(),
+			'post_status'    => 'publish',
+			'title'          => $nombre,
+			'posts_per_page' => 1,
+		] );
+		if ( ! empty( $existente ) ) {
+			wp_send_json_error( 'Ya tienes un equipo con ese nombre.' );
+		}
+
+		$equipo_id = wp_insert_post( [
+			'post_type'   => 'scl_equipo',
+			'post_title'  => $nombre,
+			'post_status' => 'publish',
+			'post_author' => get_current_user_id(),
+		] );
+
+		if ( is_wp_error( $equipo_id ) ) {
+			wp_send_json_error( 'Error al crear el equipo.' );
+		}
+
+		$zona = sanitize_text_field( wp_unslash( $_POST['zona'] ?? '' ) );
+		update_post_meta( $equipo_id, 'scl_equipo_zona', $zona );
+
+		$escudo_id = absint( $_POST['escudo_id'] ?? 0 );
+		if ( $escudo_id ) {
+			update_post_meta( $equipo_id, 'scl_equipo_escudo', $escudo_id );
+			update_post_meta( $equipo_id, 'scl_equipo_incompleto', '0' );
+		} else {
+			update_post_meta( $equipo_id, 'scl_equipo_incompleto', '1' );
+		}
+
+		wp_send_json_success( [ 'equipo_id' => $equipo_id ] );
+	}
+
+	public function ajax_editar_equipo(): void {
+		$this->verificar_permisos();
+
+		$equipo_id = absint( $_POST['equipo_id'] ?? 0 );
+		$post      = get_post( $equipo_id );
+
+		if ( ! $post || 'scl_equipo' !== $post->post_type ) {
+			wp_send_json_error( 'Equipo no válido.' );
+		}
+		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
+		}
+
+		$nombre = sanitize_text_field( wp_unslash( $_POST['nombre'] ?? '' ) );
+		if ( empty( $nombre ) ) {
+			wp_send_json_error( 'El nombre del equipo es obligatorio.' );
+		}
+
+		wp_update_post( [
+			'ID'         => $equipo_id,
+			'post_title' => $nombre,
+		] );
+
+		$zona = sanitize_text_field( wp_unslash( $_POST['zona'] ?? '' ) );
+		update_post_meta( $equipo_id, 'scl_equipo_zona', $zona );
+
+		$escudo_id = absint( $_POST['escudo_id'] ?? 0 );
+		if ( $escudo_id ) {
+			update_post_meta( $equipo_id, 'scl_equipo_escudo', $escudo_id );
+			update_post_meta( $equipo_id, 'scl_equipo_incompleto', '0' );
+		} else {
+			// Sin escudo nuevo: mantener el existente o marcar incompleto si no hay ninguno
+			$escudo_actual = absint( get_post_meta( $equipo_id, 'scl_equipo_escudo', true ) );
+			if ( ! $escudo_actual ) {
+				update_post_meta( $equipo_id, 'scl_equipo_incompleto', '1' );
+			}
+		}
+
+		wp_send_json_success( [ 'success' => true ] );
+	}
+
+	public function ajax_eliminar_equipo(): void {
+		$this->verificar_permisos();
+
+		$equipo_id = absint( $_POST['equipo_id'] ?? 0 );
+		$post      = get_post( $equipo_id );
+
+		if ( ! $post || 'scl_equipo' !== $post->post_type ) {
+			wp_send_json_error( 'Equipo no válido.' );
+		}
+		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Sin permisos.' );
+		}
+
+		$partidos = get_posts( [
+			'post_type'      => 'scl_partido',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'fields'         => 'ids',
+			'meta_query'     => [
+				'relation' => 'OR',
+				[ 'key' => 'scl_partido_equipo_local_id',  'value' => $equipo_id, 'compare' => '=' ],
+				[ 'key' => 'scl_partido_equipo_visita_id', 'value' => $equipo_id, 'compare' => '=' ],
+			],
+		] );
+
+		if ( ! empty( $partidos ) ) {
+			wp_send_json_error( 'No puedes eliminar un equipo que tiene partidos asignados.' );
+		}
+
+		wp_trash_post( $equipo_id );
+		wp_send_json_success( [ 'success' => true ] );
+	}
+
+	public function ajax_subir_escudo(): void {
+		$this->verificar_permisos();
+
+		if ( empty( $_FILES['escudo'] ) || UPLOAD_ERR_OK !== (int) $_FILES['escudo']['error'] ) {
+			wp_send_json_error( 'No se ha subido ningún archivo.' );
+		}
+
+		if ( (int) $_FILES['escudo']['size'] > 2 * 1024 * 1024 ) {
+			wp_send_json_error( 'El escudo no puede superar 2MB.' );
+		}
+
+		$tipo       = wp_check_filetype( $_FILES['escudo']['name'] );
+		$permitidos = [ 'image/jpeg', 'image/png', 'image/webp', 'image/svg+xml' ];
+		if ( ! in_array( $tipo['type'], $permitidos, true ) ) {
+			wp_send_json_error( 'Formato no permitido. Usa JPG, PNG, WebP o SVG.' );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$attachment_id = media_handle_upload( 'escudo', 0 );
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( $attachment_id->get_error_message() );
+		}
+
+		wp_send_json_success( [
+			'attachment_id' => $attachment_id,
+			'url'           => wp_get_attachment_url( $attachment_id ),
+		] );
+	}
+
+	public function ajax_get_equipos(): void {
+		$this->verificar_permisos();
+
+		$busqueda = sanitize_text_field( wp_unslash( $_POST['busqueda'] ?? '' ) );
+
+		$args = [
+			'post_type'      => 'scl_equipo',
+			'author'         => get_current_user_id(),
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		];
+		if ( $busqueda ) {
+			$args['s'] = $busqueda;
+		}
+
+		$equipos = get_posts( $args );
+
+		$data = array_map( function( $equipo ) {
+			$escudo_id = absint( get_post_meta( $equipo->ID, 'scl_equipo_escudo', true ) );
+			return [
+				'ID'         => $equipo->ID,
+				'nombre'     => $equipo->post_title,
+				'escudo_url' => $escudo_id ? wp_get_attachment_url( $escudo_id ) : '',
+				'zona'       => (string) get_post_meta( $equipo->ID, 'scl_equipo_zona', true ),
+				'incompleto' => get_post_meta( $equipo->ID, 'scl_equipo_incompleto', true ) === '1',
+			];
+		}, $equipos );
+
+		wp_send_json_success( $data );
+	}
+
+	// -----------------------------------------------------------------------
 
 	/**
 	 * Confirma el ganador de una llave.

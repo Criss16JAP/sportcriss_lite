@@ -269,3 +269,200 @@ jQuery(document).ready(function($) {
 	});
 
 });
+
+// ==========================================================================
+// SPRINT 5: Equipos
+// ==========================================================================
+
+// Drawer genérico (global para acceso desde templates inline si fuera necesario)
+window.scl_drawer_abrir = function(id) {
+	jQuery('#' + id).addClass('scl-drawer--open');
+	jQuery('body').addClass('scl-drawer-active');
+};
+window.scl_drawer_cerrar = function(id) {
+	jQuery('#' + id).removeClass('scl-drawer--open');
+	jQuery('body').removeClass('scl-drawer-active');
+};
+
+window.scl_equipo_nuevo = function() {
+	jQuery('#scl_equipo_id').val(0);
+	jQuery('#scl_equipo_nombre').val('').trigger('input');
+	jQuery('#scl_equipo_zona').val('');
+	jQuery('#scl_escudo_id').val(0);
+	jQuery('#scl_escudo_img').hide().attr('src', '');
+	jQuery('#scl_escudo_placeholder').show().text('?');
+	jQuery('#scl_equipo_drawer_titulo').text('Nuevo Equipo');
+	scl_drawer_abrir('scl_equipo_drawer');
+};
+
+window.scl_equipo_editar = function(id, nombre, zona, escudo_url, escudo_id) {
+	jQuery('#scl_equipo_id').val(id);
+	jQuery('#scl_equipo_nombre').val(nombre);
+	jQuery('#scl_equipo_zona').val(zona || '');
+	jQuery('#scl_escudo_id').val(escudo_id || 0);
+	if (escudo_url) {
+		jQuery('#scl_escudo_img').attr('src', escudo_url).show();
+		jQuery('#scl_escudo_placeholder').hide();
+	} else {
+		jQuery('#scl_escudo_img').hide();
+		jQuery('#scl_escudo_placeholder').show().text(nombre ? nombre.charAt(0).toUpperCase() : '?');
+	}
+	jQuery('#scl_equipo_drawer_titulo').text('Editar Equipo');
+	scl_drawer_abrir('scl_equipo_drawer');
+};
+
+window.scl_equipo_eliminar = function(id, nombre) {
+	if (!confirm('¿Eliminar el equipo "' + nombre + '"?')) return;
+	jQuery.post(scl_ajax.url, {
+		action:    'scl_eliminar_equipo',
+		nonce:     scl_ajax.nonce,
+		equipo_id: id,
+	}, function(res) {
+		if (res.success) {
+			jQuery('#scl-equipo-' + id).fadeOut(300, function() { jQuery(this).remove(); });
+			scl_flash('Equipo eliminado.');
+		} else {
+			scl_flash(res.data || 'No se pudo eliminar.', 'error');
+		}
+	});
+};
+
+jQuery(document).ready(function($) {
+
+	// Guardar equipo (crear o editar)
+	$(document).on('click', '#scl_equipo_guardar', function() {
+		var equipo_id = parseInt($('#scl_equipo_id').val()) || 0;
+		var nombre    = $('#scl_equipo_nombre').val().trim();
+
+		if (!nombre) {
+			scl_flash('El nombre del equipo es obligatorio.', 'error');
+			$('#scl_equipo_nombre').focus();
+			return;
+		}
+
+		var data = {
+			action:    equipo_id ? 'scl_editar_equipo' : 'scl_crear_equipo',
+			nonce:     scl_ajax.nonce,
+			equipo_id: equipo_id,
+			nombre:    nombre,
+			zona:      $('#scl_equipo_zona').val().trim(),
+			escudo_id: $('#scl_escudo_id').val() || 0,
+		};
+
+		var $btn = $(this);
+		$btn.prop('disabled', true).text('Guardando...');
+
+		$.post(scl_ajax.url, data, function(res) {
+			if (res.success) {
+				scl_drawer_cerrar('scl_equipo_drawer');
+				sessionStorage.setItem('scl_flash', 'Equipo guardado correctamente.');
+				window.location.reload();
+			} else {
+				scl_flash(res.data || 'Error al guardar.', 'error');
+				$btn.prop('disabled', false).text('Guardar equipo');
+			}
+		}).fail(function() {
+			scl_flash('Error de conexión.', 'error');
+			$btn.prop('disabled', false).text('Guardar equipo');
+		});
+	});
+
+	// Cerrar drawer
+	$(document).on('click', '#scl_equipo_cancelar, #scl_equipo_cerrar', function() {
+		scl_drawer_cerrar('scl_equipo_drawer');
+	});
+	$(document).on('click', '.scl-drawer__overlay', function() {
+		$('.scl-drawer--open').each(function() {
+			scl_drawer_cerrar($(this).attr('id'));
+		});
+	});
+
+	// Botón Editar/Completar delegado (usa data-attributes)
+	$(document).on('click', '.scl-equipo-editar-btn', function() {
+		var $b = $(this);
+		scl_equipo_editar(
+			$b.data('id'),
+			$b.data('nombre'),
+			$b.data('zona'),
+			$b.attr('data-escudo-url'),
+			$b.data('escudo-id')
+		);
+	});
+
+	// Botón Eliminar delegado
+	$(document).on('click', '.scl-equipo-eliminar-btn', function() {
+		scl_equipo_eliminar($(this).data('id'), $(this).data('nombre'));
+	});
+
+	// Botón "Registrar primer equipo" en estado vacío
+	$(document).on('click', '#scl_nuevo_equipo_btn_empty', function() {
+		scl_equipo_nuevo();
+	});
+
+	// Placeholder con inicial del nombre mientras se escribe
+	$(document).on('input', '#scl_equipo_nombre', function() {
+		if (!$('#scl_escudo_id').val() || $('#scl_escudo_id').val() === '0') {
+			$('#scl_escudo_placeholder').text($(this).val().charAt(0).toUpperCase() || '?');
+		}
+	});
+
+	// Búsqueda en tiempo real (filtra en cliente sin recargar)
+	$(document).on('input', '#scl_buscar_equipo', function() {
+		var q = $(this).val().toLowerCase().trim();
+		$('.scl-equipo-card').each(function() {
+			$(this).toggle(!q || $(this).data('nombre').indexOf(q) !== -1);
+		});
+	});
+
+	// Filtro de estado → recarga la página con el parámetro GET
+	$(document).on('change', '#scl_filtro_equipos', function() {
+		var url = new URL(window.location.href);
+		url.searchParams.set('filtro', $(this).val());
+		window.location.href = url.toString();
+	});
+
+	// Uploader de escudo
+	$(document).on('click', '#scl_escudo_btn', function() {
+		$('#scl_escudo_file').trigger('click');
+	});
+
+	$(document).on('change', '#scl_escudo_file', function() {
+		var file = this.files[0];
+		if (!file) return;
+
+		if (file.size > 2 * 1024 * 1024) {
+			scl_flash('El escudo no puede superar 2MB.', 'error');
+			$(this).val('');
+			return;
+		}
+
+		var formData = new FormData();
+		formData.append('action', 'scl_subir_escudo');
+		formData.append('nonce', scl_ajax.nonce);
+		formData.append('escudo', file);
+
+		var $btn = $('#scl_escudo_btn');
+		$btn.prop('disabled', true).text('Subiendo...');
+
+		$.ajax({
+			url:         scl_ajax.url,
+			type:        'POST',
+			data:        formData,
+			processData: false,
+			contentType: false,
+			success: function(res) {
+				if (res.success) {
+					$('#scl_escudo_id').val(res.data.attachment_id);
+					$('#scl_escudo_img').attr('src', res.data.url).show();
+					$('#scl_escudo_placeholder').hide();
+				} else {
+					scl_flash(res.data || 'Error al subir imagen.', 'error');
+				}
+			},
+			complete: function() {
+				$btn.prop('disabled', false).html('&#128247; Subir escudo');
+			}
+		});
+	});
+
+});

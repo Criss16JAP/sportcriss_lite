@@ -45,11 +45,9 @@ $temporadas = get_terms([
 		<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'torneos' ], $home_url ) ); ?>" class="scl-btn scl-btn--outline">
 			&larr; <?php esc_html_e( 'Volver a Torneos', 'sportcriss-lite' ); ?>
 		</a>
-		<?php if ( $licencia_activa ) : ?>
-			<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'temporadas', 'scl_accion' => 'nuevo', 'scl_torneo_id' => $torneo_id ], $home_url ) ); ?>" class="scl-btn scl-btn--primary">
+		<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'temporadas', 'scl_accion' => 'nuevo', 'scl_torneo_id' => $torneo_id ], $home_url ) ); ?>" class="scl-btn scl-btn--primary">
 				+ <?php esc_html_e( 'Crear temporada', 'sportcriss-lite' ); ?>
 			</a>
-		<?php endif; ?>
 	</div>
 </div>
 
@@ -85,11 +83,9 @@ $temporadas = get_terms([
 								<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'llaves', 'scl_torneo_id' => $torneo_id, 'scl_temporada_term_id' => $t->term_id ], $home_url ) ); ?>" class="scl-btn scl-btn--sm scl-btn--secondary">
 									<?php esc_html_e( 'Llaves', 'sportcriss-lite' ); ?>
 								</a>
-								<?php if ( $licencia_activa ) : ?>
 								<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'temporadas', 'scl_accion' => 'editar', 'scl_id' => $t->term_id, 'scl_torneo_id' => $torneo_id ], $home_url ) ); ?>" class="scl-btn scl-btn--sm scl-btn--outline">
 									<?php esc_html_e( 'Editar', 'sportcriss-lite' ); ?>
 								</a>
-								<?php endif; ?>
 							</div>
 						</td>
 					</tr>
