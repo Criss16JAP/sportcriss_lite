@@ -113,11 +113,6 @@ class Scl_Taxonomies {
 	 * Registra los term metas de la taxonomía scl_temporada.
 	 */
 	private static function registrar_term_metas_temporada() {
-		register_term_meta( 'scl_temporada', 'scl_temporada_torneo_id', [
-			'type'       => 'integer',
-			'single'     => true,
-			'default'    => 0,
-		] );
 
 		register_term_meta( 'scl_temporada', 'scl_temporada_estado', [
 			'type'       => 'string',

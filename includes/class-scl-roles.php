@@ -40,7 +40,10 @@ class Scl_Roles {
 	 * Llamado desde: register_activation_hook en sportcriss-lite.php
 	 */
 	public static function registrar() {
-		if ( get_role( self::SLUG ) ) {
+		$role = get_role( self::SLUG );
+		if ( $role ) {
+			$role->add_cap( 'assign_terms' );
+			$role->add_cap( 'edit_terms' );
 			return;
 		}
 
@@ -48,7 +51,9 @@ class Scl_Roles {
 			self::SLUG,
 			__( 'Organizador', 'sportcriss-lite' ),
 			[
-				'read' => true,
+				'read'         => true,
+				'assign_terms' => true,
+				'edit_terms'   => true,
 			]
 		);
 	}
@@ -65,3 +70,20 @@ class Scl_Roles {
 	}
 
 }
+
+// scl_organizador puede crear y asignar términos pero NO eliminarlos
+add_filter( 'map_meta_cap', function( $caps, $cap, $user_id, $args ) {
+	if ( in_array( $cap, [ 'delete_term', 'manage_terms' ], true ) ) {
+		$term_id = $args[0] ?? 0;
+		if ( $term_id ) {
+			$term = get_term( $term_id );
+			if ( $term && in_array( $term->taxonomy, [ 'scl_temporada', 'scl_jornada' ], true ) ) {
+				$user = get_userdata( $user_id );
+				if ( $user && in_array( 'scl_organizador', (array) $user->roles, true ) ) {
+					$caps[] = 'do_not_allow';
+				}
+			}
+		}
+	}
+	return $caps;
+}, 10, 4 );

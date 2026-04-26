@@ -120,6 +120,17 @@ class Scl_Meta_Boxes {
 			remove_meta_box( 'tagsdiv-scl_temporada', 'scl_partido', 'normal' );
 		}, 99 );
 
+		// Cargar scripts nativos para el widget de tags de scl_jornada
+		add_action( 'admin_enqueue_scripts', function( $hook ) {
+			if ( ! in_array( $hook, [ 'post.php', 'post-new.php' ], true ) ) return;
+			$screen = get_current_screen();
+			if ( ! $screen || $screen->post_type !== 'scl_partido' ) return;
+
+			wp_enqueue_script( 'post' );
+			wp_enqueue_script( 'tags-box' );
+			wp_enqueue_style( 'tags-box' );
+		} );
+
 		// Term meta boxes para scl_temporada
 		add_action( 'scl_temporada_add_form_fields',  [ $this, 'temporada_add_fields' ] );
 		add_action( 'scl_temporada_edit_form_fields', [ $this, 'temporada_edit_fields' ] );
@@ -491,9 +502,60 @@ class Scl_Meta_Boxes {
 			<tr>
 				<th><label for="scl_partido_temporada_term_id"><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label></th>
 				<td>
-					<select id="scl_partido_temporada_term_id" name="scl_partido_temporada_term_id" data-selected="<?php echo esc_attr( $temporada_term_id ); ?>">
-						<option value="0"><?php esc_html_e( '— Sin temporada —', 'sportcriss-lite' ); ?></option>
-					</select>
+					<?php
+					$terms_asignados = wp_get_post_terms( $post->ID, 'scl_temporada' );
+					$temporada_actual = ( ! is_wp_error( $terms_asignados ) && ! empty( $terms_asignados ) )
+						? $terms_asignados[0]->term_id : 0;
+
+					$todas_temporadas = get_terms( [
+						'taxonomy'   => 'scl_temporada',
+						'hide_empty' => false,
+						'orderby'    => 'name',
+						'order'      => 'ASC',
+					] );
+
+					echo '<select id="scl_partido_temporada_term_id" name="scl_partido_temporada_term_id" data-selected="' . esc_attr( $temporada_actual ) . '">';
+					echo '<option value="0">— Sin temporada —</option>';
+					if ( ! is_wp_error( $todas_temporadas ) ) {
+						foreach ( $todas_temporadas as $t ) {
+							$selected = selected( $temporada_actual, $t->term_id, false );
+							echo '<option value="' . esc_attr( $t->term_id ) . '"' . $selected . '>' . esc_html( $t->name ) . '</option>';
+						}
+					}
+					echo '</select>';
+					?>
+					<p class="description">Si la temporada no existe, créala desde el menú Temporadas.</p>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="tax-input-scl_jornada">Jornada</label></th>
+				<td>
+					<?php
+					$jornadas_asignadas = wp_get_post_terms( $post->ID, 'scl_jornada' );
+					$jornada_names = ( ! is_wp_error( $jornadas_asignadas ) && ! empty( $jornadas_asignadas ) )
+						? implode( ', ', wp_list_pluck( $jornadas_asignadas, 'name' ) ) : '';
+					?>
+					<div class="tagsdiv" id="scl_jornada_wrapper">
+						<input
+							data-wp-taxonomy="scl_jornada"
+							type="text"
+							id="new-tag-scl_jornada"
+							name="newtag[scl_jornada]"
+							class="newtag form-input-tip"
+							size="20"
+							autocomplete="off"
+							placeholder="Escribir o buscar jornada..."
+						>
+						<input type="hidden"
+							name="tax_input[scl_jornada]"
+							id="tax-input-scl_jornada"
+							value="<?php echo esc_attr( $jornada_names ); ?>"
+						>
+					</div>
+					<p class="description">
+						Escribe el nombre de la jornada (ej: "Fecha 1").
+						Si ya existe la seleccionará, si no, la creará automáticamente.
+					</p>
 				</td>
 			</tr>
 			<tr>
@@ -543,33 +605,10 @@ class Scl_Meta_Boxes {
 		jQuery(document).ready(function($) {
 			var nonce = '<?php echo esc_js( $nonce ); ?>';
 
-			var $torneoSelect    = $('#scl_partido_torneo_id');
-			var $temporadaSelect = $('#scl_partido_temporada_term_id');
-			var $grupoSelect     = $('#scl_partido_grupo_id');
+			var $torneoSelect = $('#scl_partido_torneo_id');
+			var $grupoSelect  = $('#scl_partido_grupo_id');
 
-			var temporadaGuardada = parseInt($temporadaSelect.data('selected')) || 0;
-			var grupoGuardado     = parseInt($grupoSelect.data('selected')) || 0;
-
-			function cargarTemporadas(torneoId) {
-				if (!torneoId || torneoId == '0') {
-					$temporadaSelect.html('<option value="0">— Sin temporada —</option>');
-					return;
-				}
-				$.post(ajaxurl, {
-					action: 'scl_get_temporadas_por_torneo',
-					torneo_id: torneoId,
-					nonce: nonce
-				}, function(res) {
-					if (res.success) {
-						var html = '<option value="0">— Sin temporada —</option>';
-						res.data.forEach(function(t) {
-							var sel = (t.term_id == temporadaGuardada) ? ' selected' : '';
-							html += '<option value="' + t.term_id + '"' + sel + '>' + t.name + '</option>';
-						});
-						$temporadaSelect.html(html);
-					}
-				});
-			}
+			var grupoGuardado = parseInt($grupoSelect.data('selected')) || 0;
 
 			function cargarGrupos(torneoId) {
 				if (!torneoId || torneoId == '0') {
@@ -594,13 +633,11 @@ class Scl_Meta_Boxes {
 
 			$torneoSelect.on('change', function() {
 				var torneoId = $(this).val();
-				cargarTemporadas(torneoId);
 				cargarGrupos(torneoId);
 			});
 
 			// Disparar al cargar para recuperar valores guardados
 			if ($torneoSelect.val() !== '0') {
-				cargarTemporadas($torneoSelect.val());
 				cargarGrupos($torneoSelect.val());
 			}
 		});
@@ -885,26 +922,8 @@ class Scl_Meta_Boxes {
 	 * Campos en el formulario de CREACIÓN de término scl_temporada.
 	 */
 	public function temporada_add_fields( string $taxonomy ): void {
-		$torneos = get_posts( [
-			'post_type'      => 'scl_torneo',
-			'post_status'    => 'publish',
-			'posts_per_page' => -1,
-			'orderby'        => 'title',
-			'order'          => 'ASC',
-		] );
 		wp_nonce_field( 'scl_guardar_term_temporada', 'scl_temporada_nonce' );
 		?>
-		<div class="form-field">
-			<label for="scl_temporada_torneo_id"><?php esc_html_e( 'Torneo al que pertenece', 'sportcriss-lite' ); ?></label>
-			<select name="scl_temporada_torneo_id" id="scl_temporada_torneo_id">
-				<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
-				<?php foreach ( $torneos as $t ): ?>
-					<option value="<?php echo esc_attr( $t->ID ); ?>">
-						<?php echo esc_html( $t->post_title ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-		</div>
 		<div class="form-field">
 			<label for="scl_temporada_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label>
 			<select name="scl_temporada_estado" id="scl_temporada_estado">
@@ -924,32 +943,11 @@ class Scl_Meta_Boxes {
 	 * Campos en el formulario de EDICIÓN de término scl_temporada.
 	 */
 	public function temporada_edit_fields( $term ) {
-		$torneos = get_posts( [
-			'post_type'      => 'scl_torneo',
-			'post_status'    => 'publish',
-			'posts_per_page' => -1,
-			'orderby'        => 'title',
-			'order'          => 'ASC',
-		] );
 		wp_nonce_field( 'scl_guardar_term_temporada', 'scl_temporada_nonce' );
 
-		$torneo_id = get_term_meta( $term->term_id, 'scl_temporada_torneo_id', true );
 		$estado    = get_term_meta( $term->term_id, 'scl_temporada_estado', true ) ?: 'activa';
 		$anio      = get_term_meta( $term->term_id, 'scl_temporada_anio', true ) ?: date('Y');
 		?>
-		<tr class="form-field">
-			<th><label for="scl_temporada_torneo_id"><?php esc_html_e( 'Torneo al que pertenece', 'sportcriss-lite' ); ?></label></th>
-			<td>
-				<select name="scl_temporada_torneo_id" id="scl_temporada_torneo_id">
-					<option value="0"><?php esc_html_e( '— Seleccionar torneo —', 'sportcriss-lite' ); ?></option>
-					<?php foreach ( $torneos as $t ): ?>
-						<option value="<?php echo esc_attr( $t->ID ); ?>" <?php selected( $torneo_id, $t->ID ); ?>>
-							<?php echo esc_html( $t->post_title ); ?>
-						</option>
-					<?php endforeach; ?>
-				</select>
-			</td>
-		</tr>
 		<tr class="form-field">
 			<th><label for="scl_temporada_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label></th>
 			<td>
@@ -976,8 +974,6 @@ class Scl_Meta_Boxes {
 		if ( ! isset( $_POST['scl_temporada_nonce'] ) ) return;
 		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_temporada_nonce'] ) ), 'scl_guardar_term_temporada' ) ) return;
 
-		update_term_meta( $term_id, 'scl_temporada_torneo_id',
-			absint( $_POST['scl_temporada_torneo_id'] ?? 0 ) );
 		update_term_meta( $term_id, 'scl_temporada_estado',
 			sanitize_key( wp_unslash( $_POST['scl_temporada_estado'] ?? 'activa' ) ) );
 		update_term_meta( $term_id, 'scl_temporada_anio',

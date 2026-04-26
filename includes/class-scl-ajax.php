@@ -25,7 +25,6 @@ class Scl_Ajax {
 	 */
 	public function registrar_handlers( $loader ) {
 		$loader->add_action( 'wp_ajax_scl_get_grupos_por_torneo', [ $this, 'get_grupos_por_torneo' ] );
-		$loader->add_action( 'wp_ajax_scl_get_temporadas_por_torneo', [ $this, 'get_temporadas_por_torneo' ] );
 		$loader->add_action( 'wp_ajax_scl_crear_torneo', [ $this, 'ajax_crear_torneo' ] );
 		$loader->add_action( 'wp_ajax_scl_editar_torneo', [ $this, 'ajax_editar_torneo' ] );
 		$loader->add_action( 'wp_ajax_scl_crear_temporada', [ $this, 'ajax_crear_temporada' ] );
@@ -62,39 +61,7 @@ class Scl_Ajax {
 		wp_send_json_success( $data );
 	}
 
-	public function get_temporadas_por_torneo(): void {
-		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
 
-		$torneo_id = absint( $_POST['torneo_id'] ?? 0 );
-		if ( ! $torneo_id ) {
-			wp_send_json_error( 'torneo_id requerido' );
-		}
-
-		$terms = get_terms( [
-			'taxonomy'   => 'scl_temporada',
-			'hide_empty' => false,
-			'meta_query' => [
-				[
-					'key'     => 'scl_temporada_torneo_id',
-					'value'   => $torneo_id,
-					'compare' => '=',
-				]
-			],
-		] );
-
-		if ( is_wp_error( $terms ) ) {
-			wp_send_json_error( 'Error obteniendo temporadas' );
-		}
-
-		$data = array_map( function( $term ) {
-			return [
-				'term_id' => $term->term_id,
-				'name'    => $term->name,
-			];
-		}, $terms );
-
-		wp_send_json_success( $data );
-	}
 
 	public function ajax_crear_torneo() {
 		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
