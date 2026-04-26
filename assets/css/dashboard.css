@@ -207,3 +207,131 @@ body.page-template-default .scl-dashboard {
 		gap: 1rem;
 	}
 }
+
+/* -------------------------------------------------------------------------- */
+/* SPRINT 4: Torneos y Temporadas                                             */
+/* -------------------------------------------------------------------------- */
+
+/* Cards de torneo */
+.scl-torneos-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 1.5rem;
+}
+.scl-torneo-card {
+	background: var(--scl-white);
+	border: 1px solid var(--scl-border);
+	border-radius: 8px;
+	padding: 1.5rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.scl-torneo-card__header {
+	display: flex;
+	gap: 1rem;
+	align-items: center;
+}
+.scl-torneo-card__logo {
+	width: 60px;
+	height: 60px;
+	flex-shrink: 0;
+	background: var(--scl-bg);
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+}
+.scl-torneo-card__logo img {
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+}
+.scl-torneo-card__logo-placeholder {
+	font-size: 24px;
+	font-weight: bold;
+	color: #999;
+}
+.scl-torneo-card__info h3 {
+	margin: 0 0 0.25rem 0;
+	font-size: 1.2rem;
+	color: var(--scl-primary);
+}
+.scl-torneo-card__info p {
+	margin: 0;
+	color: #666;
+	font-size: 0.9rem;
+}
+.scl-torneo-card__siglas {
+	font-size: 0.8rem;
+	background: var(--scl-bg);
+	padding: 2px 6px;
+	border-radius: 4px;
+	color: #666;
+	margin-left: 0.5rem;
+}
+.scl-torneo-card__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: auto;
+}
+
+/* Formularios */
+.scl-form-section { margin-bottom: 2rem; padding: 1.5rem; background: var(--scl-white); border-radius: 8px; border: 1px solid var(--scl-border); }
+.scl-form-section h3 { margin-top: 0; color: var(--scl-primary); border-bottom: 1px solid var(--scl-border); padding-bottom: 0.5rem; margin-bottom: 1rem; }
+.scl-field { margin-bottom: 1rem; }
+.scl-field label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 0.9rem; }
+.scl-field input, .scl-field select, .scl-field textarea {
+	width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;
+}
+.scl-field-row { display: flex; gap: 1rem; }
+.scl-field-row .scl-field { flex: 1; }
+.scl-hint { font-weight: normal; color: #666; font-size: 0.8rem; }
+.scl-description { color: #666; font-size: 0.9rem; margin-bottom: 1rem; }
+.scl-form-actions { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem; }
+
+/* Sortable de desempate */
+.scl-sortable { list-style: none; padding: 0; margin: 0; }
+.scl-sortable__item { padding: 10px 12px; background: #f8f9fa; border: 1px solid #e0e0e0; margin-bottom: 4px; border-radius: 4px; display: flex; align-items: center; gap: 8px; }
+.scl-sortable__item--locked { background: #f0f0f0; color: #999; cursor: default; }
+.scl-drag-handle { cursor: grab; color: #999; font-size: 18px; }
+
+/* Uploader */
+.scl-uploader { display: flex; align-items: center; gap: 12px; }
+.scl-uploader__preview { width: 80px; height: 80px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #ddd; }
+.scl-uploader__preview img { width: 100%; height: 100%; object-fit: contain; }
+
+/* Inline form de grupos */
+.scl-inline-form { background: #f8f9fa; border: 1px dashed #ccc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }
+
+/* Botones (Añadiendo ghost y danger) */
+.scl-btn--ghost { background: transparent; color: var(--scl-primary); border: none; }
+.scl-btn--ghost:hover { background: rgba(0,0,0,0.05); }
+.scl-btn--danger { background: var(--scl-danger); color: var(--scl-white); }
+.scl-btn--danger:hover { background: #c0392b; }
+
+/* Empty state */
+.scl-empty { text-align: center; padding: 3rem; color: #999; background: var(--scl-white); border-radius: 8px; border: 1px dashed #ccc; }
+
+/* Dashboard Headers */
+.scl-dashboard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.scl-dashboard-search { margin-bottom: 1.5rem; }
+
+/* Tables & Lists */
+.scl-grupos-list { display: flex; flex-direction: column; gap: 1rem; }
+.scl-grupo-item { background: var(--scl-white); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--scl-border); display: flex; justify-content: space-between; align-items: center; }
+.scl-grupo-item h4 { margin: 0 0 0.25rem 0; color: var(--scl-primary); }
+.scl-grupo-item p { margin: 0; color: #666; font-size: 0.9rem; }
+.scl-grupo-item__actions { display: flex; gap: 0.5rem; }
+
+.scl-table { width: 100%; border-collapse: collapse; background: var(--scl-white); border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.scl-table th, .scl-table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--scl-border); }
+.scl-table th { background: var(--scl-bg); font-weight: 600; color: var(--scl-text); }
+.scl-table tr:last-child td { border-bottom: none; }
+
+.scl-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+.scl-badge--success { background: #d4edda; color: #155724; }
+.scl-badge--secondary { background: #e2e8f0; color: #475569; }

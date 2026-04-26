@@ -1,90 +1,70 @@
 <?php
 /**
- * Template: Dashboard – Lista de torneos del Organizador
- * Ruta: /mi-panel/torneos/
- *
- * Implementado en Sprint 4.
- *
- * @package SportCrissLite
- * @since   1.0.0
+ * Lista de Torneos del organizador
  */
-
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$home_url = home_url( '/mi-panel/' );
-$torneos = new WP_Query([
-    'post_type' => 'scl_torneo',
-    'author' => get_current_user_id(),
-    'posts_per_page' => -1,
-    'post_status' => 'publish'
-]);
+$torneos = get_posts( [
+	'post_type'      => 'scl_torneo',
+	'author'         => $usuario->ID,
+	'post_status'    => 'publish',
+	'posts_per_page' => -1,
+	'orderby'        => 'title',
+	'order'          => 'ASC',
+] );
 ?>
-
-<div class="scl-page-header">
-	<h1 class="scl-page-title"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></h1>
+<div class="scl-dashboard-header">
+	<h2>Mis Torneos</h2>
 	<?php if ( $licencia_activa ) : ?>
-		<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'torneos', 'scl_accion' => 'nuevo' ], $home_url ) ); ?>" class="scl-btn scl-btn--primary">
-			+ <?php esc_html_e( 'Crear torneo', 'sportcriss-lite' ); ?>
-		</a>
+		<a href="?scl_ruta=torneos&scl_accion=nuevo" class="scl-btn scl-btn--primary">+ Nuevo torneo</a>
 	<?php endif; ?>
 </div>
 
-<?php if ( $torneos->have_posts() ) : ?>
-	<div class="scl-table-responsive">
-		<table class="scl-table">
-			<thead>
-				<tr>
-					<th><?php esc_html_e( 'Nombre', 'sportcriss-lite' ); ?></th>
-					<th><?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?></th>
-					<th><?php esc_html_e( 'Acciones', 'sportcriss-lite' ); ?></th>
-				</tr>
-			</thead>
-			<tbody>
-				<?php while ( $torneos->have_posts() ) : $torneos->the_post(); 
-					$logo_id = get_post_meta( get_the_ID(), 'scl_torneo_logo', true );
-					$logo_url = $logo_id ? wp_get_attachment_image_url( $logo_id, 'thumbnail' ) : '';
-					
-					$temporadas = get_terms([
-						'taxonomy' => 'scl_temporada',
-						'hide_empty' => false,
-						'meta_query' => [
-							[
-								'key' => 'scl_temporada_torneo_id',
-								'value' => get_the_ID()
-							]
-						]
-					]);
-					$num_temporadas = is_wp_error($temporadas) ? 0 : count($temporadas);
-				?>
-					<tr>
-						<td>
-							<div class="scl-torneo-name-cell">
-								<?php if ( $logo_url ) : ?>
-									<img src="<?php echo esc_url( $logo_url ); ?>" alt="Logo" class="scl-avatar">
-								<?php endif; ?>
-								<strong><?php the_title(); ?></strong>
-							</div>
-						</td>
-						<td><?php echo esc_html( $num_temporadas ); ?></td>
-						<td>
-							<div class="scl-actions-group">
-								<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'temporadas', 'scl_torneo_id' => get_the_ID() ], $home_url ) ); ?>" class="scl-btn scl-btn--sm scl-btn--secondary">
-									<?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?>
-								</a>
-								<?php if ( $licencia_activa ) : ?>
-								<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'torneos', 'scl_accion' => 'editar', 'scl_id' => get_the_ID() ], $home_url ) ); ?>" class="scl-btn scl-btn--sm scl-btn--outline">
-									<?php esc_html_e( 'Editar', 'sportcriss-lite' ); ?>
-								</a>
-								<?php endif; ?>
-							</div>
-						</td>
-					</tr>
-				<?php endwhile; wp_reset_postdata(); ?>
-			</tbody>
-		</table>
+<div class="scl-dashboard-search">
+	<input type="text" id="scl_buscar_torneo" placeholder="Buscar torneo..." class="scl-field">
+</div>
+
+<?php if ( empty( $torneos ) ) : ?>
+	<div class="scl-empty">
+		<p>Aún no tienes torneos creados.</p>
+		<?php if ( $licencia_activa ) : ?>
+			<a href="?scl_ruta=torneos&scl_accion=nuevo" class="scl-btn scl-btn--primary">Crear mi primer torneo</a>
+		<?php endif; ?>
 	</div>
 <?php else : ?>
-	<div class="scl-empty-state">
-		<p><?php esc_html_e( 'No has creado ningún torneo aún.', 'sportcriss-lite' ); ?></p>
+	<div class="scl-torneos-grid">
+		<?php foreach ( $torneos as $t ) : 
+			$logo_id = get_post_meta( $t->ID, 'scl_torneo_logo', true );
+			$siglas  = get_post_meta( $t->ID, 'scl_torneo_siglas', true ) ?: substr( $t->post_title, 0, 3 );
+			$grupos  = count( get_posts( [
+				'post_type'      => 'scl_grupo',
+				'post_parent'    => $t->ID,
+				'posts_per_page' => -1,
+			] ) );
+		?>
+			<div class="scl-torneo-card">
+				<div class="scl-torneo-card__header">
+					<div class="scl-torneo-card__logo">
+						<?php if ( $logo_id ) : ?>
+							<?php echo wp_get_attachment_image( $logo_id, 'thumbnail' ); ?>
+						<?php else : ?>
+							<span class="scl-torneo-card__logo-placeholder"><?php echo esc_html( strtoupper( substr( $t->post_title, 0, 1 ) ) ); ?></span>
+						<?php endif; ?>
+					</div>
+					<div class="scl-torneo-card__info">
+						<h3><?php echo esc_html( $t->post_title ); ?> <span class="scl-torneo-card__siglas">[<?php echo esc_html( strtoupper( $siglas ) ); ?>]</span></h3>
+						<p><?php echo esc_html( $grupos ); ?> grupo(s)</p>
+					</div>
+				</div>
+				<div class="scl-torneo-card__actions">
+					<a href="?scl_ruta=partidos&scl_torneo_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline">Ver partidos</a>
+					<a href="?scl_ruta=grupos&scl_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline">Grupos</a>
+					<?php if ( $licencia_activa ) : ?>
+						<a href="?scl_ruta=torneos&scl_id=<?php echo esc_attr( $t->ID ); ?>&scl_accion=editar" class="scl-btn scl-btn--outline">Editar</a>
+						<button type="button" class="scl-btn scl-btn--danger" onclick="scl_confirmar_eliminar_torneo(<?php echo esc_attr( $t->ID ); ?>, '<?php echo esc_js( $t->post_title ); ?>')">Eliminar</button>
+					<?php endif; ?>
+				</div>
+			</div>
+		<?php endforeach; ?>
 	</div>
 <?php endif; ?>

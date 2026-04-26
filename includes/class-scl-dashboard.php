@@ -82,7 +82,8 @@ class Scl_Dashboard {
 		$templates = [
 			'home'       => 'dashboard/home.php',
 			'torneos'    => 'dashboard/torneos-lista.php',
-			'temporadas' => 'dashboard/temporadas-lista.php',
+			'grupos'     => 'dashboard/grupos-lista.php',
+			'temporadas' => 'dashboard/temporadas.php',
 			'partidos'   => 'dashboard/partidos-lista.php',
 			'llaves'     => 'dashboard/llaves-lista.php',
 			'equipos'    => 'dashboard/equipos-lista.php',
@@ -92,8 +93,8 @@ class Scl_Dashboard {
 
 		$template = $templates[ $ruta ] ?? $templates['home'];
 		
-		if ( in_array( $accion, [ 'nuevo', 'editar' ], true ) ) {
-			$template = str_replace( '-lista.php', '-form.php', $template );
+		if ( $ruta === 'torneos' && in_array( $accion, [ 'nuevo', 'editar' ], true ) ) {
+			$template = 'dashboard/torneos-form.php';
 		}
 
 		$path = SCL_PATH . 'templates/' . $template;
@@ -117,6 +118,7 @@ class Scl_Dashboard {
 				<ul class="scl-nav__links">
 					<li><a href="<?php echo esc_url( $home_url ); ?>"><?php esc_html_e( 'Inicio', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'torneos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'temporadas', $home_url ) ); ?>"><?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
 				</ul>
 				<div class="scl-nav__user">
