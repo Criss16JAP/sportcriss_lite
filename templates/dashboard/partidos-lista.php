@@ -17,10 +17,12 @@ $temporada_filtro = absint( $_GET['temporada_id'] ?? 0 );
 $fase_filtro      = sanitize_key( $_GET['tipo_fase'] ?? '' );
 $estado_filtro    = sanitize_key( $_GET['estado']    ?? '' );
 
+$autor_ef = scl_get_autor_efectivo();
+
 // ── Torneos del organizador (para select de filtro y drawer) ───────────────
 $mis_torneos = get_posts( [
 	'post_type'      => 'scl_torneo',
-	'author'         => get_current_user_id(),
+	'author'         => $autor_ef,
 	'post_status'    => 'publish',
 	'posts_per_page' => -1,
 	'orderby'        => 'title',
@@ -47,7 +49,7 @@ $jornadas_all = is_wp_error( $jornadas_all ) ? [] : $jornadas_all;
 // ── Equipos del organizador (para drawer) ─────────────────────────────────
 $mis_equipos = get_posts( [
 	'post_type'      => 'scl_equipo',
-	'author'         => get_current_user_id(),
+	'author'         => $autor_ef,
 	'post_status'    => 'publish',
 	'posts_per_page' => -1,
 	'orderby'        => 'title',
@@ -128,9 +130,17 @@ $datos_drawer = [
 
 <div class="scl-page-header">
 	<h1 class="scl-page-title"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></h1>
-	<button type="button" class="scl-btn scl-btn--primary" id="scl_nuevo_partido_btn">
-		+ <?php esc_html_e( 'Nuevo partido', 'sportcriss-lite' ); ?>
-	</button>
+	<div style="display:flex; gap:0.5rem; align-items:center;">
+		<?php if ( ! scl_es_colaborador() ) : ?>
+		<a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"
+		   class="scl-btn scl-btn--outline">
+			↑ <?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?>
+		</a>
+		<?php endif; ?>
+		<button type="button" class="scl-btn scl-btn--primary" id="scl_nuevo_partido_btn">
+			+ <?php esc_html_e( 'Nuevo partido', 'sportcriss-lite' ); ?>
+		</button>
+	</div>
 </div>
 
 <!-- Filtros -->

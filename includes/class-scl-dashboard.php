@@ -43,6 +43,17 @@ class Scl_Dashboard {
 			'nonce' => wp_create_nonce( 'scl_dashboard_nonce' ),
 			'base'  => home_url( '/mi-panel/' ),
 		] );
+
+		$ruta = get_query_var( 'scl_ruta', 'home' );
+		if ( 'importar' === $ruta ) {
+			wp_enqueue_script(
+				'scl-importer-js',
+				SCL_URL . 'assets/js/importer.js',
+				[ 'jquery', 'scl-dashboard-js' ],
+				SCL_VERSION,
+				true
+			);
+		}
 	}
 
 	public function render(): string {
@@ -69,21 +80,36 @@ class Scl_Dashboard {
 	}
 
 	private function dispatch( string $ruta, int $id, string $accion ): void {
+		// Rutas bloqueadas para colaboradores
+		if ( scl_es_colaborador() ) {
+			$rutas_permitidas_colaborador = [ 'home', 'partidos' ];
+			if ( ! in_array( $ruta, $rutas_permitidas_colaborador, true ) ) {
+				include SCL_PATH . 'templates/dashboard/acceso-denegado.php';
+				return;
+			}
+			// Colaboradores solo pueden ver la lista, no crear/editar partidos
+			if ( 'partidos' === $ruta && in_array( $accion, [ 'nuevo', 'editar' ], true ) ) {
+				include SCL_PATH . 'templates/dashboard/acceso-denegado.php';
+				return;
+			}
+		}
+
 		$templates = [
-			'home'       => 'dashboard/home.php',
-			'torneos'    => 'dashboard/torneos-lista.php',
-			'grupos'     => 'dashboard/grupos-lista.php',
-			'temporadas' => 'dashboard/temporadas.php',
-			'partidos'   => 'dashboard/partidos-lista.php',
-			'llaves'     => 'dashboard/llaves-lista.php',
-			'equipos'    => 'dashboard/equipos-lista.php',
-			'importar'   => 'dashboard/importador.php',
-			'exportar'   => 'dashboard/exportar.php',
+			'home'          => 'dashboard/home.php',
+			'torneos'       => 'dashboard/torneos-lista.php',
+			'grupos'        => 'dashboard/grupos-lista.php',
+			'temporadas'    => 'dashboard/temporadas.php',
+			'partidos'      => 'dashboard/partidos-lista.php',
+			'llaves'        => 'dashboard/llaves-lista.php',
+			'equipos'       => 'dashboard/equipos-lista.php',
+			'importar'      => 'dashboard/importador.php',
+			'exportar'      => 'dashboard/exportar.php',
+			'configuracion' => 'dashboard/configuracion.php',
 		];
 
 		$template = $templates[ $ruta ] ?? $templates['home'];
-		
-		if ( $ruta === 'torneos' && in_array( $accion, [ 'nuevo', 'editar' ], true ) ) {
+
+		if ( 'torneos' === $ruta && in_array( $accion, [ 'nuevo', 'editar' ], true ) ) {
 			$template = 'dashboard/torneos-form.php';
 		}
 
@@ -97,8 +123,9 @@ class Scl_Dashboard {
 	}
 
 	private function render_header( $usuario ) {
-		$logout_url = wp_logout_url( home_url() );
-		$home_url   = home_url( '/mi-panel/' );
+		$logout_url     = wp_logout_url( home_url() );
+		$home_url       = home_url( '/mi-panel/' );
+		$es_colaborador = scl_es_colaborador();
 		?>
 		<div class="scl-dashboard">
 			<nav class="scl-nav">
@@ -107,12 +134,21 @@ class Scl_Dashboard {
 				</div>
 				<ul class="scl-nav__links">
 					<li><a href="<?php echo esc_url( $home_url ); ?>"><?php esc_html_e( 'Inicio', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'partidos', $home_url ) ); ?>"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></a></li>
+					<?php if ( ! $es_colaborador ) : ?>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'torneos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'temporadas', $home_url ) ); ?>"><?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'llaves', $home_url ) ); ?>"><?php esc_html_e( 'Llaves', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"><?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'configuracion', $home_url ) ); ?>"><?php esc_html_e( 'Configuración', 'sportcriss-lite' ); ?></a></li>
+					<?php endif; ?>
 				</ul>
 				<div class="scl-nav__user">
-					<?php printf( esc_html__( 'Hola, %s', 'sportcriss-lite' ), esc_html( $usuario->display_name ) ); ?> | 
+					<?php if ( $es_colaborador ) : ?>
+						<span class="scl-badge scl-badge--secondary" style="margin-right:0.5rem;"><?php esc_html_e( 'Colaborador', 'sportcriss-lite' ); ?></span>
+					<?php endif; ?>
+					<?php printf( esc_html__( 'Hola, %s', 'sportcriss-lite' ), esc_html( $usuario->display_name ) ); ?> |
 					<a href="<?php echo esc_url( $logout_url ); ?>"><?php esc_html_e( 'Cerrar sesión', 'sportcriss-lite' ); ?></a>
 				</div>
 			</nav>

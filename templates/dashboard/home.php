@@ -8,19 +8,18 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-// Torneos activos = torneos del usuario con al menos una temporada activa
-// En MVP, mostraremos todos los torneos del usuario
+$autor_ef = scl_get_autor_efectivo();
+
 $torneos_activos = new WP_Query( [
 	'post_type'      => 'scl_torneo',
-	'author'         => get_current_user_id(),
+	'author'         => $autor_ef,
 	'post_status'    => 'publish',
 	'posts_per_page' => -1,
 ] );
 
-// Partidos pendientes del usuario
 $partidos_pendientes = new WP_Query( [
 	'post_type'      => 'scl_partido',
-	'author'         => get_current_user_id(),
+	'author'         => $autor_ef,
 	'post_status'    => 'publish',
 	'meta_query'     => [ [ 'key' => 'scl_partido_estado', 'value' => 'pendiente' ] ],
 	'posts_per_page' => -1,
@@ -67,6 +66,11 @@ $home_url = home_url( '/mi-panel/' );
 		<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'equipos', 'scl_accion' => 'nuevo' ], $home_url ) ); ?>" class="scl-btn scl-btn--secondary">
 			+ <?php esc_html_e( 'Crear equipo', 'sportcriss-lite' ); ?>
 		</a>
+		<?php if ( ! scl_es_colaborador() ) : ?>
+		<a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>" class="scl-btn scl-btn--outline">
+			↑ <?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?>
+		</a>
+		<?php endif; ?>
 	</div>
 
 	<h2 class="scl-section-title"><?php esc_html_e( 'Mis Torneos Activos', 'sportcriss-lite' ); ?></h2>

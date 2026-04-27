@@ -862,3 +862,168 @@ jQuery(document).ready(function($) {
 	});
 
 });
+
+// ==========================================================================
+// SPRINT 7: Llaves Playoff
+// ==========================================================================
+
+function scl_llave_preview_actualizar() {
+	var $ = jQuery;
+	var a     = $('#scl_llave_equipo_a_id option:selected').text();
+	var b     = $('#scl_llave_equipo_b_id option:selected').text();
+	var doble = $('input[name="scl_llave_formato"]:checked').val() === '1';
+	var fase  = $('#scl_llave_nombre_fase').val() || '?';
+	var aVal  = $('#scl_llave_equipo_a_id').val();
+	var bVal  = $('#scl_llave_equipo_b_id').val();
+
+	if (!aVal || aVal === '0' || !bVal || bVal === '0') {
+		$('#scl_llave_preview').hide();
+		return;
+	}
+
+	var html = '<strong>Se crearán:</strong><ul>';
+	html += '<li>' + $('<span>').text(a).html() + ' vs ' + $('<span>').text(b).html()
+		+ ' (' + $('<span>').text(fase).html() + ' - Ida)</li>';
+	if (doble) {
+		html += '<li>' + $('<span>').text(b).html() + ' vs ' + $('<span>').text(a).html()
+			+ ' (' + $('<span>').text(fase).html() + ' - Vuelta)</li>';
+	}
+	html += '</ul>';
+	$('#scl_llave_preview').html(html).show();
+}
+
+function scl_llave_guardar() {
+	var $ = jQuery;
+	var torneo_id = $('#scl_llave_torneo_id').val();
+	var equipo_a  = $('#scl_llave_equipo_a_id').val();
+	var equipo_b  = $('#scl_llave_equipo_b_id').val();
+	var fase      = $('#scl_llave_nombre_fase').val().trim();
+	var es_doble  = $('input[name="scl_llave_formato"]:checked').val();
+
+	if (!torneo_id || torneo_id === '0') { scl_flash('Selecciona un torneo.', 'error'); return; }
+	if (!equipo_a || equipo_a === '0' || !equipo_b || equipo_b === '0') { scl_flash('Selecciona ambos equipos.', 'error'); return; }
+	if (equipo_a === equipo_b) { scl_flash('Los equipos deben ser diferentes.', 'error'); return; }
+	if (!fase) { scl_flash('Escribe el nombre de la fase.', 'error'); return; }
+
+	var $btn = $('#scl_llave_guardar');
+	$btn.prop('disabled', true).text('Creando...');
+
+	jQuery.post(scl_ajax.url, {
+		action:            'scl_crear_llave',
+		nonce:             scl_ajax.nonce,
+		torneo_id:         torneo_id,
+		temporada_term_id: $('#scl_llave_temporada_term_id').val() || 0,
+		equipo_a_id:       equipo_a,
+		equipo_b_id:       equipo_b,
+		nombre_fase:       fase,
+		es_doble:          es_doble,
+	}, function(res) {
+		if (res.success) {
+			scl_drawer_cerrar('scl_llave_drawer');
+			sessionStorage.setItem('scl_flash', 'Llave creada. Los partidos están listos.');
+			window.location.reload();
+		} else {
+			scl_flash(res.data || 'Error al crear la llave.', 'error');
+			$btn.prop('disabled', false).text('Crear llave y partidos');
+		}
+	}).fail(function() {
+		scl_flash('Error de conexión.', 'error');
+		$btn.prop('disabled', false).text('Crear llave y partidos');
+	});
+}
+
+window.scl_confirmar_ganador = function(llave_id, ganador_id) {
+	jQuery.post(scl_ajax.url, {
+		action:     'scl_confirmar_ganador_llave',
+		nonce:      scl_ajax.nonce,
+		llave_id:   llave_id,
+		ganador_id: ganador_id,
+	}, function(res) {
+		if (res.success) {
+			sessionStorage.setItem('scl_flash', res.data.ganador + ' ha avanzado.');
+			window.location.reload();
+		} else {
+			scl_flash(res.data || 'Error al confirmar.', 'error');
+		}
+	});
+};
+
+window.scl_confirmar_con_penales = function(llave_id, ganador_id) {
+	var pen_a = parseInt(jQuery('#scl_pen_a_' + llave_id).val(), 10);
+	var pen_b = parseInt(jQuery('#scl_pen_b_' + llave_id).val(), 10);
+	if (isNaN(pen_a) || isNaN(pen_b)) { scl_flash('Ingresa los penales de ambos equipos.', 'error'); return; }
+	if (pen_a === pen_b) { scl_flash('Los penales no pueden terminar en empate.', 'error'); return; }
+	jQuery.post(scl_ajax.url, {
+		action:     'scl_confirmar_ganador_llave',
+		nonce:      scl_ajax.nonce,
+		llave_id:   llave_id,
+		ganador_id: ganador_id,
+		penales_a:  pen_a,
+		penales_b:  pen_b,
+	}, function(res) {
+		if (res.success) {
+			sessionStorage.setItem('scl_flash', res.data.ganador + ' avanza por penales.');
+			window.location.reload();
+		} else {
+			scl_flash(res.data || 'Error.', 'error');
+		}
+	});
+};
+
+jQuery(document).ready(function($) {
+
+	// Abrir drawer nueva llave
+	$(document).on('click', '#scl_nueva_llave_btn, #scl_nueva_llave_btn_empty', function() {
+		$('#scl_llave_torneo_id').val('0');
+		$('#scl_llave_temporada_term_id').val('0');
+		$('#scl_llave_nombre_fase').val('');
+		$('#scl_llave_equipo_a_id').val('0');
+		$('#scl_llave_equipo_b_id').val('0');
+		$('input[name="scl_llave_formato"][value="0"]').prop('checked', true);
+		$('#scl_llave_preview').hide();
+		scl_drawer_abrir('scl_llave_drawer');
+	});
+
+	// Cerrar drawer llave
+	$(document).on('click', '#scl_llave_cerrar, #scl_llave_cancelar', function() {
+		scl_drawer_cerrar('scl_llave_drawer');
+	});
+
+	// Guardar llave
+	$(document).on('click', '#scl_llave_guardar', scl_llave_guardar);
+
+	// Preview dinámico al cambiar equipos, formato o fase
+	$(document).on('change input',
+		'#scl_llave_equipo_a_id, #scl_llave_equipo_b_id, input[name="scl_llave_formato"], #scl_llave_nombre_fase',
+		scl_llave_preview_actualizar
+	);
+
+	// Filtro de torneo en la página de llaves
+	$(document).on('change', '#scl_filtro_llave_torneo', function() {
+		var url = new URL(window.location.href);
+		var val = $(this).val();
+		if (val && val !== '0') { url.searchParams.set('torneo_id', val); }
+		else { url.searchParams.delete('torneo_id'); }
+		window.location.href = url.toString();
+	});
+
+	// Eliminar llave
+	$(document).on('click', '.scl-llave-eliminar-btn', function() {
+		var id     = $(this).data('id');
+		var titulo = $(this).data('titulo');
+		if (!confirm('¿Eliminar la llave "' + titulo + '"? Sus partidos también serán eliminados.')) return;
+		$.post(scl_ajax.url, {
+			action:   'scl_eliminar_llave',
+			nonce:    scl_ajax.nonce,
+			llave_id: id,
+		}, function(res) {
+			if (res.success) {
+				$('#scl-llave-' + id).fadeOut(300, function() { $(this).remove(); });
+				scl_flash('Llave eliminada.');
+			} else {
+				scl_flash(res.data || 'No se pudo eliminar.', 'error');
+			}
+		});
+	});
+
+});

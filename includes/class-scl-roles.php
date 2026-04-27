@@ -22,6 +22,11 @@ class Scl_Roles {
 	 */
 	const SLUG = 'scl_organizador';
 
+	/**
+	 * Slug del rol Colaborador.
+	 */
+	const SLUG_COLABORADOR = 'scl_colaborador';
+
 	// -----------------------------------------------------------------------
 	// API pública
 	// -----------------------------------------------------------------------
@@ -44,31 +49,65 @@ class Scl_Roles {
 		if ( $role ) {
 			$role->add_cap( 'assign_terms' );
 			$role->add_cap( 'edit_terms' );
-			return;
+		} else {
+			add_role(
+				self::SLUG,
+				__( 'Organizador', 'sportcriss-lite' ),
+				[
+					'read'         => true,
+					'assign_terms' => true,
+					'edit_terms'   => true,
+				]
+			);
 		}
 
-		add_role(
-			self::SLUG,
-			__( 'Organizador', 'sportcriss-lite' ),
-			[
-				'read'         => true,
-				'assign_terms' => true,
-				'edit_terms'   => true,
-			]
-		);
+		if ( ! get_role( self::SLUG_COLABORADOR ) ) {
+			add_role(
+				self::SLUG_COLABORADOR,
+				__( 'Colaborador', 'sportcriss-lite' ),
+				[ 'read' => true ]
+			);
+		}
 	}
 
 	/**
-	 * Elimina el rol `scl_organizador` de WordPress.
-	 *
-	 * Llamado desde: uninstall hook (aún no implementado en Sprint 0).
-	 * Los usuarios que tenían este rol pasan a no tener rol asignado;
-	 * WordPress los mantiene como usuarios pero sin capacidades.
+	 * Elimina los roles del plugin de WordPress.
 	 */
 	public static function eliminar() {
 		remove_role( self::SLUG );
+		remove_role( self::SLUG_COLABORADOR );
 	}
 
+}
+
+// ── Funciones auxiliares globales ──────────────────────────────────────────
+
+/**
+ * Retorna el ID del organizador al que está vinculado un colaborador.
+ */
+function scl_get_organizador_de_colaborador( int $colaborador_id ): int {
+	return (int) get_user_meta( $colaborador_id, 'scl_colaborador_organizador_id', true );
+}
+
+/**
+ * Indica si el usuario actual tiene el rol colaborador.
+ */
+function scl_es_colaborador(): bool {
+	$user = wp_get_current_user();
+	return in_array( Scl_Roles::SLUG_COLABORADOR, (array) $user->roles, true );
+}
+
+/**
+ * Devuelve el ID del autor efectivo para queries de datos.
+ * Si es colaborador, retorna el ID de su organizador.
+ * Si es organizador o admin, retorna el propio ID.
+ */
+function scl_get_autor_efectivo(): int {
+	if ( scl_es_colaborador() ) {
+		$org_id = scl_get_organizador_de_colaborador( get_current_user_id() );
+		return $org_id ?: get_current_user_id();
+	}
+	return get_current_user_id();
 }
 
 // scl_organizador puede crear y asignar términos pero NO eliminarlos

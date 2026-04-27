@@ -611,3 +611,175 @@ body.scl-drawer-active { overflow: hidden; }
 .scl-badge--pendiente  { background: #fff3cd; color: #856404; }
 .scl-badge--finalizado { background: #d4edda; color: #155724; }
 .scl-badge--playoff    { background: #cce5ff; color: #004085; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPRINT 6.5 & 7: Colaboradores y Llaves Playoff
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Cards de llave ──────────────────────────────── */
+.scl-llave-card {
+	background: var(--scl-white);
+	border: 1px solid var(--scl-border);
+	border-radius: 8px;
+	margin-bottom: 0.75rem;
+	overflow: hidden;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.scl-llave-card__header {
+	display: flex; align-items: center; justify-content: space-between;
+	padding: 0.75rem 1.25rem;
+	background: linear-gradient(135deg, var(--scl-primary) 0%, #2a5a8c 100%);
+	color: white; font-size: 0.875rem;
+}
+.scl-llave-card__equipos {
+	display: flex; align-items: center; justify-content: center;
+	gap: 1.25rem; padding: 1.25rem 1.25rem 0.5rem;
+}
+.scl-llave-card__equipo {
+	display: flex; align-items: center; gap: 0.5rem; flex: 1;
+}
+.scl-llave-card__equipo--b { flex-direction: row-reverse; }
+.scl-llave-card__vs {
+	font-size: 0.8rem; font-weight: 700; color: #bbb; flex-shrink: 0;
+}
+.scl-llave-card__marcadores {
+	padding: 0 1.25rem 0.75rem; font-size: 0.875rem;
+}
+.scl-llave-card__marcadores table {
+	width: 100%; border-collapse: collapse;
+}
+.scl-llave-card__marcadores td {
+	padding: 3px 4px; color: #555;
+}
+.scl-llave-card__marcadores td:first-child {
+	font-weight: 600; color: #888; width: 70px;
+}
+.scl-llave-card__global td {
+	font-weight: 700; color: var(--scl-primary);
+	border-top: 1px solid #eee; padding-top: 6px !important;
+}
+
+/* ── Confirmación de ganador ─────────────────────── */
+.scl-llave-confirmar {
+	padding: 0.875rem 1.25rem;
+	background: #fff8e1; border-top: 1px solid #ffe082;
+}
+.scl-llave-confirmar > p { margin: 0 0 0.75rem; font-size: 0.875rem; }
+.scl-penales-form {
+	display: flex; align-items: center; gap: 0.5rem;
+	flex-wrap: wrap; margin-bottom: 0.75rem;
+}
+.scl-penales-form span { font-size: 0.85rem; font-weight: 600; }
+.scl-penales-form .scl-goles-input { width: 56px; height: 40px; font-size: 1.2rem; }
+.scl-ganador-select { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+/* ── Pie de card ─────────────────────────────────── */
+.scl-llave-card__footer {
+	padding: 0.75rem 1.25rem;
+	background: #f8f9fa; border-top: 1px solid #eee;
+	display: flex; justify-content: flex-end; gap: 0.5rem; align-items: center;
+}
+
+/* ── Toggle formato ida/vuelta ───────────────────── */
+.scl-toggle-group {
+	display: flex; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;
+}
+.scl-toggle-option { flex: 1; }
+.scl-toggle-option input { display: none; }
+.scl-toggle-option span {
+	display: block; padding: 8px 12px; text-align: center;
+	cursor: pointer; background: white; font-size: 0.875rem;
+	transition: background 0.15s;
+}
+.scl-toggle-option input:checked + span {
+	background: var(--scl-primary); color: white; font-weight: 600;
+}
+
+/* ── Info box preview ────────────────────────────── */
+.scl-info-box {
+	background: #e8f4fd; border: 1px solid #b8d9f0;
+	border-radius: 6px; padding: 0.75rem 1rem;
+	font-size: 0.875rem; color: #1a5276; display: none;
+	margin-top: 0.5rem;
+}
+.scl-info-box ul { margin: 0.5rem 0 0; padding-left: 1.25rem; }
+.scl-info-box li { margin-bottom: 2px; }
+
+/* ── Tabla de colaboradores ──────────────────────── */
+.scl-table-wrapper { border-radius: 8px; overflow: hidden; }
+
+/* ═══════════════════════════════════════════════════════════
+   Sprint 8 – Importador CSV
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Drop zone ───────────────────────────────────────────── */
+.scl-dropzone {
+	border: 2px dashed var(--scl-border);
+	border-radius: 10px;
+	padding: 3rem 2rem;
+	text-align: center;
+	cursor: pointer;
+	transition: border-color 0.2s, background 0.2s;
+	background: var(--scl-white);
+	margin-top: 1rem;
+}
+.scl-dropzone:hover,
+.scl-dropzone--over {
+	border-color: var(--scl-primary);
+	background: #f0f5fb;
+}
+.scl-dropzone--loading {
+	opacity: 0.7;
+	pointer-events: none;
+}
+.scl-dropzone__icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+.scl-dropzone__text { margin: 0.25rem 0; font-size: 1rem; color: var(--scl-text); }
+.scl-dropzone__hint { margin: 0.25rem 0 0; font-size: 0.8rem; color: #999; }
+.scl-link { color: var(--scl-primary); text-decoration: underline; cursor: pointer; }
+
+/* ── Cards compact ───────────────────────────────────────── */
+.scl-cards-row--compact .scl-card {
+	padding: 0.75rem 1rem;
+}
+.scl-cards-row--compact .scl-card__value { font-size: 1.75rem; }
+.scl-card--ok   { border-top: 3px solid var(--scl-success); }
+.scl-card--warn { border-top: 3px solid #f39c12; }
+.scl-card--ok   .scl-card__value { color: var(--scl-success); }
+.scl-card--warn .scl-card__value { color: #e67e22; }
+
+/* ── Info box (siempre visible en importador) ────────────── */
+.scl-info-box--visible {
+	display: block;
+}
+
+/* ── Alert danger ────────────────────────────────────────── */
+.scl-alert {
+	border-radius: 6px;
+	padding: 0.75rem 1rem;
+	font-size: 0.875rem;
+}
+.scl-alert--danger {
+	background: #fdecea;
+	border: 1px solid #f5c6cb;
+	color: #7b1a1a;
+}
+
+/* ── Preview table scroll ────────────────────────────────── */
+.scl-table-scroll { overflow-x: auto; }
+.scl-table--sm { font-size: 0.8rem; white-space: nowrap; }
+.scl-table--sm th,
+.scl-table--sm td { padding: 0.4rem 0.6rem; }
+
+/* ── Resultado final ─────────────────────────────────────── */
+.scl-importer-resultado { text-align: center; padding: 2rem 1rem; }
+.scl-success-icon {
+	font-size: 3rem;
+	width: 72px; height: 72px;
+	border-radius: 50%;
+	background: var(--scl-success);
+	color: white;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 1rem;
+}

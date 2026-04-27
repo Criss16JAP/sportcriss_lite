@@ -98,13 +98,16 @@ class Scl_Access {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Comprueba si el usuario actual tiene el rol Organizador.
+	 * Comprueba si el usuario actual tiene un rol que debe ser bloqueado del wp-admin
+	 * (Organizador o Colaborador).
 	 *
 	 * @return bool
 	 */
 	private function es_organizador() {
-		$user = wp_get_current_user();
-		return in_array( Scl_Roles::SLUG, (array) $user->roles, true );
+		$user  = wp_get_current_user();
+		$roles = (array) $user->roles;
+		return in_array( Scl_Roles::SLUG, $roles, true )
+			|| in_array( Scl_Roles::SLUG_COLABORADOR, $roles, true );
 	}
 
 	/**
