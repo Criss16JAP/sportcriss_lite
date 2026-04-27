@@ -70,6 +70,9 @@ $home_url = home_url( '/mi-panel/' );
 		<a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>" class="scl-btn scl-btn--outline">
 			↑ <?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?>
 		</a>
+		<a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'exportar', $home_url ) ); ?>" class="scl-btn scl-btn--outline">
+			↗ <?php esc_html_e( 'Exportar tabla', 'sportcriss-lite' ); ?>
+		</a>
 		<?php endif; ?>
 	</div>
 
@@ -84,7 +87,7 @@ $home_url = home_url( '/mi-panel/' );
 						<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'partidos', 'scl_torneo_id' => get_the_ID() ], $home_url ) ); ?>" class="scl-btn scl-btn--outline">
 							<?php esc_html_e( 'Ver partidos', 'sportcriss-lite' ); ?>
 						</a>
-						<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'exportar', 'scl_torneo_id' => get_the_ID() ], $home_url ) ); ?>" class="scl-btn scl-btn--outline">
+						<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'exportar', 'scl_id' => get_the_ID() ], $home_url ) ); ?>" class="scl-btn scl-btn--outline">
 							<?php esc_html_e( 'Exportar tabla', 'sportcriss-lite' ); ?>
 						</a>
 					</div>

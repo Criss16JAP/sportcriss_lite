@@ -141,6 +141,7 @@ class Scl_Dashboard {
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'llaves', $home_url ) ); ?>"><?php esc_html_e( 'Llaves', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"><?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'exportar', $home_url ) ); ?>"><?php esc_html_e( 'Exportar', 'sportcriss-lite' ); ?></a></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'configuracion', $home_url ) ); ?>"><?php esc_html_e( 'Configuración', 'sportcriss-lite' ); ?></a></li>
 					<?php endif; ?>
 				</ul>

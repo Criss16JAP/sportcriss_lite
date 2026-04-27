@@ -58,6 +58,8 @@ function scl_activar_plugin() {
 	Scl_Roles::registrar();
 	Scl_Cpts::registrar();
 	Scl_Taxonomies::registrar();
+	// Rewrite rule para la vista limpia de exportación
+	add_rewrite_rule( '^scl-exportar/?$', 'index.php?scl_exportar=1', 'top' );
 	flush_rewrite_rules();
 
 	// Sprint 3: Página del dashboard
@@ -134,7 +136,7 @@ function scl_run() {
 
 	// Exportación visual
 	$export = new Scl_Export();
-	$loader->add_action( 'template_redirect', [ $export, 'servir_vista_limpia' ] );
+	$export->init();
 
 	$loader->run();
 }

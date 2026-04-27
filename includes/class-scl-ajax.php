@@ -56,6 +56,8 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_validar_csv',           [ $this, 'ajax_validar_csv' ] );
 		$loader->add_action( 'wp_ajax_scl_procesar_importacion',  [ $this, 'ajax_procesar_importacion' ] );
 		$loader->add_action( 'wp_ajax_scl_descargar_plantilla',   [ $this, 'ajax_descargar_plantilla' ] );
+		// Sprint 9: Exportación Visual
+		$loader->add_action( 'wp_ajax_scl_get_export_url', [ $this, 'ajax_get_export_url' ] );
 	}
 
 	public function get_grupos_por_torneo(): void {
@@ -793,6 +795,33 @@ class Scl_Ajax {
 
 		wp_trash_post( $llave_id );
 		wp_send_json_success();
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint 9: Exportación Visual
+	// -----------------------------------------------------------------------
+
+	public function ajax_get_export_url(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! is_user_logged_in() ) wp_send_json_error( 'No autenticado.' );
+		if ( scl_es_colaborador() ) wp_send_json_error( 'Sin permisos.' );
+
+		$torneo_id         = absint( $_GET['torneo_id'] ?? 0 );
+		$temporada_term_id = absint( $_GET['temporada']  ?? 0 );
+		$grupo_id          = absint( $_GET['grupo']       ?? 0 );
+
+		if ( ! $torneo_id ) {
+			wp_send_json_error( 'Falta torneo_id.' );
+		}
+
+		$torneo = get_post( $torneo_id );
+		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
+			|| ( (int) $torneo->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) ) {
+			wp_send_json_error( 'Torneo no válido.' );
+		}
+
+		$url = Scl_Export::get_url( $torneo_id, $temporada_term_id, $grupo_id );
+		wp_send_json_success( [ 'url' => $url ] );
 	}
 
 	// -----------------------------------------------------------------------

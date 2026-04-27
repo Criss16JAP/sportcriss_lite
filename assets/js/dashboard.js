@@ -1027,3 +1027,44 @@ jQuery(document).ready(function($) {
 	});
 
 });
+
+// ── EXPORTACIÓN ────────────────────────────────────────────────────────────────
+(function($) {
+	var $tempSelect    = $('#scl_export_temporada');
+	var $grupoSelect   = $('#scl_export_grupo');
+	var $frame         = $('#scl_export_frame');
+	var $btnAbrir      = $('#scl_abrir_export');
+	var $btnActualizar = $('#scl_export_actualizar');
+
+	if ( ! $frame.length ) return;
+
+	function scl_build_export_url() {
+		var params     = new URLSearchParams(window.location.search);
+		var torneo     = params.get('scl_id') || (typeof scl_export_torneo_id !== 'undefined' ? scl_export_torneo_id : 0);
+		var temporada  = $tempSelect.length  ? $tempSelect.val()  || 0 : 0;
+		var grupo      = $grupoSelect.length ? $grupoSelect.val() || 0 : 0;
+		return scl_ajax.url
+			+ '?action=scl_get_export_url'
+			+ '&nonce='     + encodeURIComponent(scl_ajax.nonce)
+			+ '&torneo_id=' + encodeURIComponent(torneo)
+			+ '&temporada=' + encodeURIComponent(temporada)
+			+ '&grupo='     + encodeURIComponent(grupo);
+	}
+
+	function scl_actualizar_preview() {
+		$.get(scl_build_export_url(), function(res) {
+			if (res.success && res.data && res.data.url) {
+				$frame.attr('src', res.data.url);
+				$btnAbrir.attr('href', res.data.url);
+			}
+		});
+	}
+
+	$btnActualizar.on('click', scl_actualizar_preview);
+
+	var debounce_timer;
+	$tempSelect.add($grupoSelect).on('change', function() {
+		clearTimeout(debounce_timer);
+		debounce_timer = setTimeout(scl_actualizar_preview, 400);
+	});
+})(jQuery);

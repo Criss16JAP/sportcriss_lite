@@ -783,3 +783,150 @@ body.scl-drawer-active { overflow: hidden; }
 	justify-content: center;
 	margin-bottom: 1rem;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Sprint 9 – Exportación Visual (dashboard side)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Header de la sección exportar ── */
+.scl-exportar-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem;
+	flex-wrap: wrap;
+	margin-bottom: 1.5rem;
+}
+
+.scl-exportar-header__info { display: flex; flex-direction: column; gap: .375rem; }
+
+.scl-exportar-header__info h2 {
+	font-size: 1.25rem;
+	font-weight: 700;
+	color: var(--scl-text-primary, #111827);
+	display: flex;
+	align-items: center;
+	gap: .5rem;
+}
+
+.scl-export-mini-logo {
+	width: 32px;
+	height: 32px;
+	object-fit: contain;
+	border-radius: 4px;
+}
+
+.scl-back-link {
+	font-size: .8125rem;
+	color: var(--scl-muted, #6b7280);
+	text-decoration: none;
+}
+.scl-back-link:hover { color: var(--scl-primary, #1d4ed8); }
+
+/* ── Controles de filtro ── */
+.scl-exportar-controles { margin-bottom: 1.25rem; }
+
+/* ── Grid de torneos ── */
+.scl-torneos-export-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 1rem;
+	margin-top: 1.25rem;
+}
+
+.scl-torneo-export-btn {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: .625rem;
+	padding: 1.25rem .75rem;
+	background: #fff;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	text-decoration: none;
+	color: var(--scl-text-primary, #111827);
+	font-size: .875rem;
+	font-weight: 600;
+	text-align: center;
+	transition: border-color .15s, box-shadow .15s, transform .15s;
+}
+.scl-torneo-export-btn:hover {
+	border-color: var(--scl-primary, #1d4ed8);
+	box-shadow: 0 4px 12px rgba(0,0,0,.08);
+	transform: translateY(-2px);
+	color: var(--scl-primary, #1d4ed8);
+}
+
+.scl-torneo-export-btn img {
+	width: 56px;
+	height: 56px;
+	object-fit: contain;
+	border-radius: 6px;
+}
+
+.scl-siglas-placeholder {
+	width: 56px;
+	height: 56px;
+	background: var(--scl-primary, #1d4ed8);
+	color: #fff;
+	border-radius: 6px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.1rem;
+	font-weight: 800;
+	letter-spacing: -.02em;
+}
+
+/* ── Preview con iframe ── */
+.scl-exportar-preview { margin-top: 1rem; }
+
+.scl-exportar-preview__label {
+	font-size: .75rem;
+	color: var(--scl-muted, #6b7280);
+	margin-bottom: .5rem;
+	font-style: italic;
+}
+
+.scl-exportar-preview__frame-wrap {
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	overflow: hidden;
+	background: #0d1117;
+	min-height: 420px;
+	display: flex;
+	align-items: stretch;
+}
+
+.scl-exportar-iframe {
+	width: 100%;
+	min-height: 500px;
+	border: none;
+	display: block;
+}
+
+.scl-exportar-preview__instrucciones {
+	margin-top: 1rem;
+	padding: .875rem 1rem;
+	background: #f0f9ff;
+	border: 1px solid #bae6fd;
+	border-radius: 8px;
+	font-size: .8125rem;
+	color: #0369a1;
+	display: flex;
+	flex-direction: column;
+	gap: .5rem;
+}
+
+.scl-exportar-preview__instrucciones p { margin: 0; line-height: 1.5; }
+
+.scl-exportar-preview__instrucciones kbd {
+	display: inline-block;
+	padding: 1px 5px;
+	background: #e0f2fe;
+	border: 1px solid #7dd3fc;
+	border-radius: 3px;
+	font-family: monospace;
+	font-size: .8em;
+}
+.scl-export-filters .scl-field { flex: 1 1 180px; }

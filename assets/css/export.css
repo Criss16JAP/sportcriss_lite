@@ -1,9 +1,286 @@
 /**
- * SportCriss Lite – Estilos de la vista de exportación visual
- * Usa CSS custom properties (vars) inyectadas desde la configuración del torneo.
+ * SportCriss Lite – Vista de Exportación Visual
  *
- * Implementado en Sprint 9.
+ * Cargado SOLO en la vista limpia de pantallazo (export-tabla.php).
+ * Usa CSS custom properties inyectadas desde la configuración del torneo.
  *
  * @package SportCrissLite
  * @since   1.0.0
  */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+	font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+	background: #0d1117;
+	min-height: 100vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2rem 1rem;
+}
+
+/* ── Wrapper y fondo ─────────────────────────────────── */
+.scl-export-wrapper {
+	position: relative;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.scl-export-bg {
+	position: fixed;
+	inset: 0;
+	background-image: var(--scl-fondo);
+	background-size: cover;
+	background-position: center;
+	background-color: var(--scl-color-1);
+	filter: brightness(0.35);
+	z-index: 0;
+}
+
+/* ── Card principal ──────────────────────────────────── */
+.scl-export-card {
+	position: relative;
+	z-index: 1;
+	width: 100%;
+	max-width: 720px;
+	background: rgba(255, 255, 255, 0.04);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 16px;
+	overflow: hidden;
+	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Header del torneo ───────────────────────────────── */
+.scl-export-header {
+	display: flex;
+	align-items: center;
+	gap: 1.25rem;
+	padding: 1.75rem 2rem;
+	background: linear-gradient(
+		135deg,
+		rgba(var(--scl-color-1-rgb), 0.9) 0%,
+		rgba(var(--scl-color-1-rgb), 0.6) 100%
+	);
+	border-bottom: 2px solid var(--scl-color-2);
+}
+
+.scl-export-logo {
+	width: 72px;
+	height: 72px;
+	object-fit: contain;
+	border-radius: 8px;
+	filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+	flex-shrink: 0;
+}
+
+.scl-export-logo-placeholder {
+	width: 72px;
+	height: 72px;
+	background: var(--scl-color-2);
+	color: var(--scl-color-1);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.5rem;
+	font-weight: 800;
+	border-radius: 8px;
+	flex-shrink: 0;
+	letter-spacing: -0.03em;
+}
+
+.scl-export-header__info { flex: 1; min-width: 0; }
+
+.scl-export-titulo {
+	font-size: 1.5rem;
+	font-weight: 800;
+	color: #ffffff;
+	letter-spacing: 0.04em;
+	line-height: 1.1;
+	text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.scl-export-subtitulo {
+	font-size: 0.875rem;
+	font-weight: 600;
+	color: var(--scl-color-2);
+	margin-top: 4px;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+/* ── Tabla de posiciones ─────────────────────────────── */
+.scl-export-tabla-wrap {
+	padding: 0;
+	overflow-x: auto;
+}
+
+.scl-export-tabla {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.scl-export-tabla thead tr {
+	background: rgba(var(--scl-color-1-rgb), 0.7);
+}
+
+.scl-export-tabla thead th {
+	color: rgba(255, 255, 255, 0.7);
+	font-size: 0.7rem;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 10px 8px;
+	text-align: center;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	white-space: nowrap;
+}
+
+.scl-col-equipo { text-align: left !important; padding-left: 1rem !important; }
+.scl-col-pos    { width: 40px; }
+.scl-col-stat   { width: 42px; }
+.scl-col-pts    { width: 52px; }
+
+/* Filas */
+.scl-export-tabla tbody tr {
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	transition: background 0.15s;
+}
+.scl-export-tabla tbody tr:last-child { border-bottom: none; }
+
+.scl-export-tabla tbody td {
+	padding: 10px 8px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 0.9rem;
+	text-align: center;
+	vertical-align: middle;
+}
+
+/* Fila del líder */
+.scl-fila--lider {
+	background: rgba(var(--scl-color-1-rgb), 0.5);
+}
+.scl-fila--lider .scl-posicion {
+	background: var(--scl-color-2);
+	color: var(--scl-color-1);
+}
+
+/* Zona de clasificación (top 2) */
+.scl-fila--zona-verde {
+	border-left: 3px solid var(--scl-color-2);
+}
+
+/* Posición */
+.scl-posicion {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 50%;
+	font-weight: 700;
+	font-size: 0.8rem;
+	background: rgba(255, 255, 255, 0.1);
+	color: rgba(255, 255, 255, 0.9);
+}
+
+/* Celda de equipo */
+.scl-equipo-cell {
+	display: flex;
+	align-items: center;
+	gap: 0.625rem;
+	text-align: left;
+}
+
+.scl-escudo {
+	width: 30px;
+	height: 30px;
+	object-fit: contain;
+	border-radius: 50%;
+	flex-shrink: 0;
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.scl-escudo--placeholder {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: rgba(255, 255, 255, 0.15);
+	font-weight: 700;
+	font-size: 0.75rem;
+	color: white;
+}
+
+.scl-nombre-equipo {
+	font-weight: 600;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 160px;
+}
+
+/* Puntos destacados */
+.scl-col-pts strong {
+	font-size: 1rem;
+	font-weight: 800;
+	color: var(--scl-color-2);
+}
+
+/* Diferencia de goles */
+.scl-fila td:nth-child(9) { color: rgba(255, 255, 255, 0.6); font-size: 0.8rem; }
+
+/* ── Footer ──────────────────────────────────────────── */
+.scl-export-footer {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.875rem 1.5rem;
+	background: rgba(0, 0, 0, 0.2);
+	border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.scl-export-updated {
+	font-size: 0.7rem;
+	color: rgba(255, 255, 255, 0.35);
+	letter-spacing: 0.03em;
+}
+
+.scl-export-brand {
+	font-size: 0.7rem;
+	font-weight: 700;
+	color: rgba(255, 255, 255, 0.2);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+/* ── Empty state ─────────────────────────────────────── */
+.scl-export-empty {
+	padding: 3rem;
+	text-align: center;
+	color: rgba(255, 255, 255, 0.4);
+	font-size: 0.9rem;
+}
+
+/* ── Responsive ──────────────────────────────────────── */
+@media ( max-width: 500px ) {
+	.scl-export-header      { padding: 1.25rem; flex-direction: column; text-align: center; }
+	.scl-export-titulo      { font-size: 1.2rem; }
+	.scl-nombre-equipo      { max-width: 100px; }
+	.scl-col-stat           { width: 34px; }
+	.scl-export-tabla tbody td { font-size: 0.8rem; padding: 8px 5px; }
+}
+
+/* ── Print ───────────────────────────────────────────── */
+@media print {
+	body                         { background: white; }
+	.scl-export-bg               { display: none; }
+	.scl-export-card             { border: none; box-shadow: none; background: white; }
+	.scl-export-tabla thead th,
+	.scl-export-titulo           { color: #1a3a5c; }
+	.scl-export-tabla tbody td   { color: #333; }
+	.scl-col-pts strong          { color: #1a3a5c; }
+}
