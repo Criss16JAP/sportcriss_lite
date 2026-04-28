@@ -253,26 +253,49 @@ class Scl_Ajax {
 		wp_send_json_success( [ 'success' => true ] );
 	}
 
-	public function ajax_subir_imagen_torneo() {
+	public function ajax_subir_imagen_torneo(): void {
 		$this->verificar_permisos();
 
-		if ( empty( $_FILES['file'] ) ) {
-			wp_send_json_error( 'No se ha subido ningún archivo.' );
+		if ( empty( $_FILES['file'] ) || $_FILES['file']['error'] !== UPLOAD_ERR_OK ) {
+			wp_send_json_error( 'Error al recibir el archivo.' );
+		}
+
+		$file             = $_FILES['file'];
+		$tipos_permitidos = [ 'image/jpeg', 'image/png', 'image/webp', 'image/svg+xml' ];
+		if ( ! in_array( $file['type'], $tipos_permitidos, true ) ) {
+			wp_send_json_error( 'Tipo de archivo no permitido.' );
+		}
+		if ( $file['size'] > 2 * 1024 * 1024 ) {
+			wp_send_json_error( 'El archivo supera 2MB.' );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		require_once ABSPATH . 'wp-admin/includes/image.php';
 		require_once ABSPATH . 'wp-admin/includes/media.php';
 
-		$attachment_id = media_handle_upload( 'file', 0 );
-		if ( is_wp_error( $attachment_id ) ) {
-			wp_send_json_error( $attachment_id->get_error_message() );
+		$upload = wp_handle_upload( $file, [ 'test_form' => false ] );
+		if ( isset( $upload['error'] ) ) {
+			wp_send_json_error( 'Error al subir: ' . $upload['error'] );
 		}
 
+		$attachment_id = wp_insert_attachment( [
+			'post_mime_type' => $upload['type'],
+			'post_title'     => sanitize_file_name( $file['name'] ),
+			'post_status'    => 'inherit',
+		], $upload['file'] );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( 'Error al registrar el archivo.' );
+		}
+
+		wp_update_attachment_metadata(
+			$attachment_id,
+			wp_generate_attachment_metadata( $attachment_id, $upload['file'] )
+		);
+
 		wp_send_json_success( [
-			'success'       => true,
 			'attachment_id' => $attachment_id,
-			'url'           => wp_get_attachment_url( $attachment_id ),
+			'url'           => wp_get_attachment_image_url( $attachment_id, 'medium' ) ?: $upload['url'],
 		] );
 	}
 
@@ -591,31 +614,67 @@ class Scl_Ajax {
 		$this->verificar_permisos();
 		if ( scl_es_colaborador() ) wp_send_json_error( 'Sin permisos.' );
 
-		$email = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+		// Verificar límite de 5 colaboradores
+		$actuales = get_users( [
+			'role'       => 'scl_colaborador',
+			'meta_key'   => 'scl_colaborador_organizador_id',
+			'meta_value' => get_current_user_id(),
+		] );
+		if ( count( $actuales ) >= 5 ) {
+			wp_send_json_error( 'Has alcanzado el límite de 5 colaboradores.' );
+		}
+
+		$nombre   = sanitize_text_field( wp_unslash( $_POST['nombre']   ?? '' ) );
+		$apellido = sanitize_text_field( wp_unslash( $_POST['apellido'] ?? '' ) );
+		$email    = sanitize_email( wp_unslash( $_POST['email']         ?? '' ) );
+
+		if ( ! $nombre || ! $apellido ) {
+			wp_send_json_error( 'Nombre y apellido son obligatorios.' );
+		}
 		if ( ! is_email( $email ) ) {
-			wp_send_json_error( 'Email inválido.' );
+			wp_send_json_error( 'El correo electrónico no es válido.' );
+		}
+		if ( email_exists( $email ) ) {
+			wp_send_json_error( 'Ya existe una cuenta con ese correo electrónico.' );
 		}
 
-		$usuario = get_user_by( 'email', $email );
-		if ( ! $usuario ) {
-			wp_send_json_error( 'No existe un usuario con ese email en el sistema.' );
-		}
-		if ( $usuario->ID === get_current_user_id() ) {
-			wp_send_json_error( 'No puedes asignarte a ti mismo.' );
+		// Generar username único a partir del nombre
+		$username_base = sanitize_user(
+			remove_accents( strtolower( $nombre . '.' . $apellido ) ),
+			true
+		);
+		$username  = $username_base;
+		$contador  = 1;
+		while ( username_exists( $username ) ) {
+			$username = $username_base . $contador;
+			$contador++;
 		}
 
-		$org_existente = (int) get_user_meta( $usuario->ID, 'scl_colaborador_organizador_id', true );
-		if ( $org_existente && $org_existente !== get_current_user_id() ) {
-			wp_send_json_error( 'Este usuario ya es colaborador de otro organizador.' );
+		$password = wp_generate_password( 12, true, false );
+
+		$user_id = wp_create_user( $username, $password, $email );
+		if ( is_wp_error( $user_id ) ) {
+			wp_send_json_error( 'Error al crear la cuenta: ' . $user_id->get_error_message() );
 		}
 
-		$usuario->set_role( 'scl_colaborador' );
-		update_user_meta( $usuario->ID, 'scl_colaborador_organizador_id', get_current_user_id() );
+		wp_update_user( [
+			'ID'           => $user_id,
+			'first_name'   => $nombre,
+			'last_name'    => $apellido,
+			'display_name' => $nombre . ' ' . $apellido,
+			'role'         => 'scl_colaborador',
+		] );
+
+		update_user_meta( $user_id, 'scl_colaborador_organizador_id', get_current_user_id() );
+
+		// Enviar credenciales por email
+		scl_enviar_email_colaborador( $user_id, $email, $nombre, $apellido, $password );
 
 		wp_send_json_success( [
-			'user_id'      => $usuario->ID,
-			'display_name' => $usuario->display_name,
-			'email'        => $usuario->user_email,
+			'user_id'      => $user_id,
+			'display_name' => $nombre . ' ' . $apellido,
+			'email'        => $email,
+			'username'     => $username,
 		] );
 	}
 
@@ -630,11 +689,9 @@ class Scl_Ajax {
 			wp_send_json_error( 'No puedes revocar este colaborador.' );
 		}
 
-		$usuario = get_userdata( $colaborador_id );
-		if ( $usuario ) {
-			$usuario->set_role( 'subscriber' );
-			delete_user_meta( $colaborador_id, 'scl_colaborador_organizador_id' );
-		}
+		// Eliminar la cuenta del colaborador (fue creada automáticamente)
+		require_once ABSPATH . 'wp-admin/includes/user.php';
+		wp_delete_user( $colaborador_id );
 
 		wp_send_json_success();
 	}

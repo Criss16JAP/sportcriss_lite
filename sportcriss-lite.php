@@ -37,6 +37,8 @@ require_once SCL_PATH . 'includes/class-scl-meta-boxes.php';
 require_once SCL_PATH . 'includes/class-scl-engine.php';
 require_once SCL_PATH . 'includes/class-scl-llave.php';
 require_once SCL_PATH . 'includes/class-scl-importer.php';
+require_once SCL_PATH . 'includes/class-scl-auth.php';
+require_once SCL_PATH . 'includes/class-scl-emails.php';
 require_once SCL_PATH . 'includes/class-scl-dashboard.php';
 require_once SCL_PATH . 'includes/class-scl-ajax.php';
 require_once SCL_PATH . 'includes/class-scl-public.php';
@@ -78,6 +80,18 @@ function scl_activar_plugin() {
 			'post_content' => '[scl_dashboard]',
 		] );
 	}
+
+	// Página de login frontend
+	$login_page = get_page_by_path( 'acceso' );
+	if ( ! $login_page ) {
+		wp_insert_post( [
+			'post_title'   => 'Acceso',
+			'post_name'    => 'acceso',
+			'post_status'  => 'publish',
+			'post_type'    => 'page',
+			'post_content' => '[scl_login]',
+		] );
+	}
 }
 
 /**
@@ -99,9 +113,11 @@ function scl_run() {
 
 	// Acceso y bloqueo de wp-admin para el rol Organizador
 	$access = new Scl_Access();
-	$loader->add_action( 'init',               [ $access, 'bloquear_wp_admin' ],       1 );
+	$loader->add_action( 'init',               [ $access, 'bloquear_wp_admin' ],         1 );
 	$loader->add_action( 'after_setup_theme',  [ $access, 'ocultar_admin_bar' ] );
 	$loader->add_action( 'wp_enqueue_scripts', [ $access, 'eliminar_margen_admin_bar' ] );
+	$loader->add_action( 'login_init',         [ $access, 'interceptar_wp_login' ] );
+	$loader->add_filter( 'login_redirect',     [ $access, 'redirigir_tras_login' ], 10, 3 );
 
 	// Menú unificado en wp-admin (solo para administrator)
 	$admin_menu = new Scl_Admin_Menu();
@@ -137,6 +153,10 @@ function scl_run() {
 	// Handlers AJAX
 	$ajax = new Scl_Ajax();
 	$ajax->registrar_handlers( $loader );
+
+	// Módulo de autenticación frontend (shortcode [scl_login])
+	$auth = new Scl_Auth();
+	$loader->add_action( 'init', [ $auth, 'init' ] );
 
 	// Vistas públicas (shortcodes)
 	$public = new Scl_Public();

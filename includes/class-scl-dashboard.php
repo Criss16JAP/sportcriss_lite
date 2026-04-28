@@ -58,7 +58,7 @@ class Scl_Dashboard {
 
 	public function render(): string {
 		if ( ! is_user_logged_in() ) {
-			wp_safe_redirect( wp_login_url( home_url( '/mi-panel/' ) ) );
+			wp_safe_redirect( home_url( '/acceso/' ) );
 			exit;
 		}
 
@@ -122,46 +122,51 @@ class Scl_Dashboard {
 		}
 	}
 
-	private function render_header( $usuario ) {
-		$logout_url     = wp_logout_url( home_url() );
+	private function render_header( $usuario ): void {
+		$logout_url     = wp_logout_url( home_url( '/acceso/' ) );
 		$home_url       = home_url( '/mi-panel/' );
 		$es_colaborador = scl_es_colaborador();
+		$portal_nombre  = get_option( 'scl_portal_nombre', 'SportCriss Lite' );
 		?>
 		<div class="scl-dashboard">
-			<nav class="scl-nav">
-				<div class="scl-nav__logo">
-					<?php esc_html_e( 'SportCriss Lite', 'sportcriss-lite' ); ?>
-				</div>
-				<ul class="scl-nav__links">
+		<nav class="scl-nav">
+			<div class="scl-nav__inner">
+				<div class="scl-nav__logo">&#9917; <?php echo esc_html( $portal_nombre ); ?></div>
+
+				<button class="scl-nav__hamburger" id="scl_hamburger" aria-label="Menú">
+					<span></span><span></span><span></span>
+				</button>
+
+				<ul class="scl-nav__links" id="scl_nav_links">
 					<li><a href="<?php echo esc_url( $home_url ); ?>"><?php esc_html_e( 'Inicio', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'partidos', $home_url ) ); ?>"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></a></li>
 					<?php if ( ! $es_colaborador ) : ?>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'torneos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'temporadas', $home_url ) ); ?>"><?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'llaves', $home_url ) ); ?>"><?php esc_html_e( 'Llaves', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"><?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'exportar', $home_url ) ); ?>"><?php esc_html_e( 'Exportar', 'sportcriss-lite' ); ?></a></li>
-					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'configuracion', $home_url ) ); ?>"><?php esc_html_e( 'Configuración', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'torneos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'temporadas', $home_url ) ); ?>"><?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'llaves', $home_url ) ); ?>"><?php esc_html_e( 'Llaves', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"><?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'exportar', $home_url ) ); ?>"><?php esc_html_e( 'Exportar', 'sportcriss-lite' ); ?></a></li>
+						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'configuracion', $home_url ) ); ?>"><?php esc_html_e( 'Configuración', 'sportcriss-lite' ); ?></a></li>
 					<?php endif; ?>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'partidos', $home_url ) ); ?>"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></a></li>
 				</ul>
+
 				<div class="scl-nav__user">
 					<?php if ( $es_colaborador ) : ?>
 						<span class="scl-badge scl-badge--secondary" style="margin-right:0.5rem;"><?php esc_html_e( 'Colaborador', 'sportcriss-lite' ); ?></span>
 					<?php endif; ?>
-					<?php printf( esc_html__( 'Hola, %s', 'sportcriss-lite' ), esc_html( $usuario->display_name ) ); ?> |
-					<a href="<?php echo esc_url( $logout_url ); ?>"><?php esc_html_e( 'Cerrar sesión', 'sportcriss-lite' ); ?></a>
+					<span class="scl-nav__user-name"><?php echo esc_html( $usuario->display_name ); ?></span>
+					<a href="<?php echo esc_url( $logout_url ); ?>" class="scl-nav__logout"><?php esc_html_e( 'Salir', 'sportcriss-lite' ); ?></a>
 				</div>
-			</nav>
-			<main class="scl-main">
+			</div>
+		</nav>
+		<main class="scl-main">
+		<div class="scl-main__inner">
 		<?php
 	}
 
-	private function render_footer() {
-		?>
-			</main>
-		</div>
-		<?php
+	private function render_footer(): void {
+		echo '</div></main></div>';
 	}
 
 

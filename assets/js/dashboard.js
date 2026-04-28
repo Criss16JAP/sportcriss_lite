@@ -39,7 +39,70 @@ document.addEventListener('DOMContentLoaded', function() {
 		scl_flash(flash);
 		sessionStorage.removeItem('scl_flash');
 	}
+
+	// Hamburguesa mobile
+	document.getElementById('scl_hamburger')?.addEventListener('click', function() {
+		document.getElementById('scl_nav_links')?.classList.toggle('open');
+	});
 });
+
+// ── Color picker sync ─────────────────────────────────────────
+window.scl_sync_color = function(tipo, valor) {
+	document.getElementById('scl_preview_' + tipo).style.background = valor;
+	document.getElementById('scl_hex_' + tipo).textContent = valor;
+};
+
+// ── Uploader con barra de progreso (formulario de torneo) ──────
+window.scl_init_form_uploader = function(fileInputId, contentId, progressId, hiddenId) {
+	var fileInput = document.getElementById(fileInputId);
+	if (!fileInput) return;
+
+	fileInput.addEventListener('change', function() {
+		var file = this.files[0];
+		if (!file) return;
+
+		if (file.size > 2 * 1024 * 1024) {
+			scl_flash('La imagen no puede superar 2MB.', 'error');
+			return;
+		}
+
+		var formData = new FormData();
+		formData.append('action', 'scl_subir_imagen_torneo');
+		formData.append('nonce', scl_ajax.nonce);
+		formData.append('file', file);
+
+		var xhr = new XMLHttpRequest();
+		xhr.open('POST', scl_ajax.url);
+
+		xhr.upload.onprogress = function(e) {
+			if (e.lengthComputable) {
+				var pct = Math.round((e.loaded / e.total) * 100);
+				document.getElementById(progressId).style.width = pct + '%';
+			}
+		};
+
+		xhr.onload = function() {
+			var res;
+			try { res = JSON.parse(xhr.responseText); } catch(e) { res = { success: false }; }
+			if (res.success) {
+				document.getElementById(hiddenId).value = res.data.attachment_id;
+				document.getElementById(contentId).innerHTML =
+					'<img src="' + res.data.url + '" class="scl-file-uploader__preview" alt="">'
+					+ '<p class="scl-file-uploader__text"><small>Haz clic para cambiar</small></p>';
+			} else {
+				scl_flash(res.data || 'Error al subir la imagen.', 'error');
+			}
+			document.getElementById(progressId).style.width = '0';
+		};
+
+		xhr.onerror = function() {
+			scl_flash('Error de conexión al subir.', 'error');
+			document.getElementById(progressId).style.width = '0';
+		};
+
+		xhr.send(formData);
+	});
+};
 
 jQuery(document).ready(function($) {
 
@@ -59,63 +122,25 @@ jQuery(document).ready(function($) {
 				$('#scl_desempate_orden').val(JSON.stringify(orden));
 			}
 		});
-		// Disparar update inicial para poblar el campo hidden
 		$lista.sortable('option', 'update').call($lista[0]);
 	};
 	scl_init_sortable();
 
-	// Uploader de imagen frontend
-	window.scl_init_uploader = function(btn_id, file_id, hidden_id, preview_id) {
-		var $btn = $('#' + btn_id);
-		var $file = $('#' + file_id);
-		var $hidden = $('#' + hidden_id);
-		var $preview = $('#' + preview_id);
+	// Inicializar uploaders del formulario de torneo
+	scl_init_form_uploader('scl_logo_file', 'scl_logo_content', 'scl_logo_progress', 'scl_logo_id');
+	scl_init_form_uploader('scl_fondo_file', 'scl_fondo_content', 'scl_fondo_progress', 'scl_fondo_id');
 
-		if (!$btn.length) return;
-
-		$btn.on('click', function() {
-			$file.click();
-		});
-
-		$file.on('change', function() {
-			var file = this.files[0];
-			if (!file) return;
-
-			var formData = new FormData();
-			formData.append('action', 'scl_subir_imagen_torneo');
-			formData.append('nonce', scl_ajax.nonce);
-			formData.append('file', file);
-
-			$btn.text('Subiendo...').prop('disabled', true);
-
-			$.ajax({
-				url: scl_ajax.url,
-				type: 'POST',
-				data: formData,
-				processData: false,
-				contentType: false,
-				success: function(res) {
-					$btn.text('Seleccionar imagen').prop('disabled', false);
-					if (res.success) {
-						$hidden.val(res.data.attachment_id);
-						$preview.html('<img src="' + res.data.url + '">');
-					} else {
-						scl_flash(res.data || 'Error al subir la imagen', 'error');
-					}
-				},
-				error: function() {
-					$btn.text('Seleccionar imagen').prop('disabled', false);
-					scl_flash('Error de conexión al subir', 'error');
-				}
-			});
-		});
-	};
-	scl_init_uploader('scl_logo_btn', 'scl_logo_file', 'scl_logo_id', 'scl_logo_preview');
-	scl_init_uploader('scl_fondo_btn', 'scl_fondo_file', 'scl_fondo_id', 'scl_fondo_preview');
+	// Sincronizar colores al cargar con valores precargados
+	(function() {
+		var cp = document.getElementById('scl_color_primario');
+		var cs = document.getElementById('scl_color_secundario');
+		if (cp) scl_sync_color('primario',   cp.value);
+		if (cs) scl_sync_color('secundario', cs.value);
+	})();
 
 	// Guardar torneo
 	$('#scl_guardar_torneo').on('click', function() {
-		var torneoId = parseInt($('#scl_torneo_id').val()) || 0;
+		var torneoId = parseInt($('#scl_torneo_id_editar').val()) || 0;
 		var action = torneoId ? 'scl_editar_torneo' : 'scl_crear_torneo';
 
 		// Serializar orden de desempate desde la lista sortable

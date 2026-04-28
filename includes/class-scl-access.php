@@ -23,18 +23,56 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class Scl_Access {
 
 	/**
-	 * URL del dashboard frontend al que se redirige al Organizador.
-	 * Se construye dinámicamente con home_url() para no hardcodear URLs.
+	 * URL del dashboard frontend.
 	 *
 	 * @return string
 	 */
-	private function url_dashboard() {
+	private function url_dashboard(): string {
 		return home_url( '/mi-panel/' );
+	}
+
+	/**
+	 * URL de la página de login propia del plugin.
+	 *
+	 * @return string
+	 */
+	private function url_login(): string {
+		return home_url( '/acceso/' );
 	}
 
 	// -----------------------------------------------------------------------
 	// Hooks
 	// -----------------------------------------------------------------------
+
+	/**
+	 * Intercepta wp-login.php cuando la acción es 'login' (GET sin credenciales)
+	 * y redirige a la página propia de acceso del plugin.
+	 * Se registra en el hook 'login_init'.
+	 */
+	public function interceptar_wp_login(): void {
+		$action = sanitize_key( $_REQUEST['action'] ?? 'login' );
+		// Solo redirigir la acción de login, no logout/register/resetpass/etc.
+		if ( in_array( $action, [ 'login', '' ], true ) && ! isset( $_POST['log'] ) ) {
+			wp_safe_redirect( $this->url_login() );
+			exit;
+		}
+	}
+
+	/**
+	 * Redirige a /mi-panel/ después de un login de wp-admin nativo
+	 * si el usuario es Organizador o Colaborador.
+	 * Se registra en el filter 'login_redirect'.
+	 */
+	public function redirigir_tras_login( string $redirect_to, string $requested, $user ): string {
+		if ( is_wp_error( $user ) ) {
+			return $redirect_to;
+		}
+		$roles_plugin = [ 'scl_organizador', 'scl_colaborador' ];
+		if ( array_intersect( $roles_plugin, (array) $user->roles ) ) {
+			return $this->url_dashboard();
+		}
+		return $redirect_to;
+	}
 
 	/**
 	 * Detecta si el usuario actual es Organizador e intenta acceder al wp-admin.

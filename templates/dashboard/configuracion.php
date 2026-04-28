@@ -15,12 +15,13 @@ if ( scl_es_colaborador() ) {
 	return;
 }
 
-// Obtener colaboradores actuales del organizador
-$colaboradores = get_users( [
+$colaboradores      = get_users( [
 	'role'       => 'scl_colaborador',
 	'meta_key'   => 'scl_colaborador_organizador_id',
 	'meta_value' => get_current_user_id(),
 ] );
+$total_colaboradores = count( $colaboradores );
+$puede_agregar       = $total_colaboradores < 5;
 ?>
 
 <div class="scl-page-header">
@@ -28,139 +29,141 @@ $colaboradores = get_users( [
 </div>
 
 <div class="scl-form-section">
-	<h3><?php esc_html_e( 'Mis colaboradores', 'sportcriss-lite' ); ?></h3>
-	<p class="scl-description">
-		<?php esc_html_e( 'Los colaboradores pueden ingresar resultados de tus partidos desde su propia cuenta. El usuario debe existir previamente en el sistema.', 'sportcriss-lite' ); ?>
-	</p>
-
-	<div class="scl-colaborador-form">
-		<div class="scl-field-row" style="align-items: flex-end;">
-			<div class="scl-field">
-				<label for="scl_colaborador_email"><?php esc_html_e( 'Email del colaborador', 'sportcriss-lite' ); ?></label>
-				<input type="email" id="scl_colaborador_email"
-				       placeholder="<?php esc_attr_e( 'correo@ejemplo.com', 'sportcriss-lite' ); ?>">
-			</div>
-			<div class="scl-field" style="flex: 0 0 auto;">
-				<button type="button" class="scl-btn scl-btn--primary" id="scl_asignar_colaborador_btn">
-					+ <?php esc_html_e( 'Asignar', 'sportcriss-lite' ); ?>
-				</button>
-			</div>
+	<div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+		<div>
+			<h3 style="margin:0 0 0.25rem"><?php esc_html_e( 'Mis colaboradores', 'sportcriss-lite' ); ?></h3>
+			<p class="scl-description" style="margin:0">
+				<?php esc_html_e( 'Los colaboradores pueden ingresar resultados de tus partidos desde su propia cuenta. Puedes tener hasta', 'sportcriss-lite' ); ?>
+				<strong><?php esc_html_e( '5 colaboradores', 'sportcriss-lite' ); ?></strong>
+				<?php esc_html_e( 'activos.', 'sportcriss-lite' ); ?>
+			</p>
 		</div>
+		<span class="scl-badge <?php echo $total_colaboradores >= 5 ? 'scl-badge--error' : 'scl-badge--success'; ?>">
+			<?php echo esc_html( $total_colaboradores ); ?>/5 colaboradores
+		</span>
 	</div>
 
-	<?php if ( ! empty( $colaboradores ) ) : ?>
-		<div id="scl_colaboradores_lista" class="scl-table-wrapper" style="margin-top: 1.5rem;">
-			<table class="scl-table">
-				<thead>
-					<tr>
-						<th><?php esc_html_e( 'Nombre', 'sportcriss-lite' ); ?></th>
-						<th><?php esc_html_e( 'Email', 'sportcriss-lite' ); ?></th>
-						<th style="width: 120px;"></th>
-					</tr>
-				</thead>
-				<tbody id="scl_colaboradores_tbody">
-					<?php foreach ( $colaboradores as $colaborador ) : ?>
-					<tr id="scl-colaborador-<?php echo esc_attr( $colaborador->ID ); ?>">
-						<td><?php echo esc_html( $colaborador->display_name ); ?></td>
-						<td><?php echo esc_html( $colaborador->user_email ); ?></td>
-						<td>
-							<button type="button"
-							        class="scl-btn scl-btn--danger scl-btn--sm scl-revocar-colaborador-btn"
-							        data-id="<?php echo esc_attr( $colaborador->ID ); ?>"
-							        data-nombre="<?php echo esc_attr( $colaborador->display_name ); ?>">
-								<?php esc_html_e( 'Revocar', 'sportcriss-lite' ); ?>
-							</button>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		</div>
-	<?php else : ?>
-		<div id="scl_colaboradores_lista">
-			<div class="scl-empty" style="padding: 2rem;" id="scl_colaboradores_empty">
-				<p style="margin: 0; color: #999;">
-					<?php esc_html_e( 'Aún no tienes colaboradores asignados.', 'sportcriss-lite' ); ?>
-				</p>
+	<?php if ( $puede_agregar ) : ?>
+	<div class="scl-inline-form" id="scl_nuevo_colaborador_form" style="margin-bottom:1.5rem">
+		<div class="scl-field-row">
+			<div class="scl-field">
+				<label for="scl_col_nombre"><?php esc_html_e( 'Nombre *', 'sportcriss-lite' ); ?></label>
+				<input type="text" id="scl_col_nombre" placeholder="Cristian">
 			</div>
-			<table class="scl-table" id="scl_colaboradores_table" style="display:none; margin-top:1rem;">
-				<thead>
-					<tr>
-						<th><?php esc_html_e( 'Nombre', 'sportcriss-lite' ); ?></th>
-						<th><?php esc_html_e( 'Email', 'sportcriss-lite' ); ?></th>
-						<th style="width: 120px;"></th>
-					</tr>
-				</thead>
-				<tbody id="scl_colaboradores_tbody"></tbody>
-			</table>
+			<div class="scl-field">
+				<label for="scl_col_apellido"><?php esc_html_e( 'Apellido *', 'sportcriss-lite' ); ?></label>
+				<input type="text" id="scl_col_apellido" placeholder="Ávila">
+			</div>
 		</div>
+		<div class="scl-field">
+			<label for="scl_col_email"><?php esc_html_e( 'Correo electrónico *', 'sportcriss-lite' ); ?></label>
+			<input type="email" id="scl_col_email" placeholder="colaborador@correo.com">
+			<p class="scl-description" style="margin-top:4px">
+				<?php esc_html_e( 'Se creará una cuenta nueva y se le enviará la contraseña por correo.', 'sportcriss-lite' ); ?>
+			</p>
+		</div>
+		<button type="button" class="scl-btn scl-btn--primary" id="scl_col_guardar">
+			+ <?php esc_html_e( 'Agregar colaborador', 'sportcriss-lite' ); ?>
+		</button>
+	</div>
+	<?php else : ?>
+	<div class="scl-alert scl-alert--warning" style="margin-bottom:1.5rem">
+		<?php esc_html_e( 'Has alcanzado el límite de 5 colaboradores. Revoca uno para poder agregar otro.', 'sportcriss-lite' ); ?>
+	</div>
 	<?php endif; ?>
+
+	<!-- Lista de colaboradores actuales -->
+	<div id="scl_colaboradores_lista">
+		<?php if ( ! empty( $colaboradores ) ) : ?>
+			<div class="scl-equipos-list">
+			<?php foreach ( $colaboradores as $col ) : ?>
+				<div class="scl-equipo-card" id="scl-col-<?php echo esc_attr( $col->ID ); ?>">
+					<div class="scl-equipo-card__escudo">
+						<?php echo esc_html( strtoupper( mb_substr( $col->display_name, 0, 1 ) ) ); ?>
+					</div>
+					<div class="scl-equipo-card__info">
+						<div class="scl-equipo-card__nombre">
+							<?php echo esc_html( $col->display_name ); ?>
+						</div>
+						<div class="scl-equipo-card__meta">
+							<?php echo esc_html( $col->user_email ); ?>
+						</div>
+					</div>
+					<div class="scl-equipo-card__actions">
+						<button type="button"
+						        class="scl-btn scl-btn--danger scl-btn--sm"
+						        onclick="scl_revocar_colaborador(<?php echo esc_attr( $col->ID ); ?>, '<?php echo esc_js( $col->display_name ); ?>')">
+							<?php esc_html_e( 'Revocar', 'sportcriss-lite' ); ?>
+						</button>
+					</div>
+				</div>
+			<?php endforeach; ?>
+			</div>
+		<?php else : ?>
+			<p class="scl-description" id="scl_colaboradores_vacio">
+				<?php esc_html_e( 'Aún no tienes colaboradores. Agrega uno arriba.', 'sportcriss-lite' ); ?>
+			</p>
+		<?php endif; ?>
+	</div>
 </div>
 
 <script>
 jQuery(document).ready(function($) {
 
-	// Asignar colaborador
-	$('#scl_asignar_colaborador_btn').on('click', function() {
-		var email = $('#scl_colaborador_email').val().trim();
-		if (!email) {
-			scl_flash('Ingresa el email del colaborador.', 'error');
-			$('#scl_colaborador_email').focus();
-			return;
+	// Guardar nuevo colaborador (crea usuario desde cero)
+	$(document).on('click', '#scl_col_guardar', function() {
+		var nombre   = $('#scl_col_nombre').val().trim();
+		var apellido = $('#scl_col_apellido').val().trim();
+		var email    = $('#scl_col_email').val().trim();
+
+		if (!nombre || !apellido) {
+			scl_flash('El nombre y apellido son obligatorios.', 'error'); return;
+		}
+		var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+		if (!email || !emailRegex.test(email)) {
+			scl_flash('Ingresa un correo válido.', 'error'); return;
 		}
 
 		var $btn = $(this);
-		$btn.prop('disabled', true).text('Asignando...');
+		$btn.prop('disabled', true).text('<?php echo esc_js( __( 'Creando cuenta...', 'sportcriss-lite' ) ); ?>');
 
 		$.post(scl_ajax.url, {
-			action: 'scl_asignar_colaborador',
-			nonce:  scl_ajax.nonce,
-			email:  email,
+			action:   'scl_asignar_colaborador',
+			nonce:    scl_ajax.nonce,
+			nombre:   nombre,
+			apellido: apellido,
+			email:    email,
 		}, function(res) {
 			if (res.success) {
-				$('#scl_colaborador_email').val('');
-				scl_flash('Colaborador asignado correctamente.');
-				// Agregar fila a la tabla
-				var d = res.data;
-				var fila = '<tr id="scl-colaborador-' + d.user_id + '">'
-					+ '<td>' + $('<span>').text(d.display_name).html() + '</td>'
-					+ '<td>' + $('<span>').text(d.email).html() + '</td>'
-					+ '<td><button type="button" class="scl-btn scl-btn--danger scl-btn--sm scl-revocar-colaborador-btn"'
-					+ ' data-id="' + d.user_id + '" data-nombre="' + $('<span>').text(d.display_name).html() + '">'
-					+ '<?php echo esc_js( __( 'Revocar', 'sportcriss-lite' ) ); ?>'
-					+ '</button></td></tr>';
-				$('#scl_colaboradores_empty').hide();
-				$('#scl_colaboradores_table').show();
-				$('#scl_colaboradores_tbody').append(fila);
+				scl_flash(res.data.display_name + ' <?php echo esc_js( __( 'ha sido agregado como colaborador. Se le envió su contraseña por correo.', 'sportcriss-lite' ) ); ?>');
+				$('#scl_col_nombre, #scl_col_apellido, #scl_col_email').val('');
+				setTimeout(function() { window.location.reload(); }, 1800);
 			} else {
-				scl_flash(res.data || 'Error al asignar colaborador.', 'error');
+				scl_flash(res.data || 'Error al crear el colaborador.', 'error');
+				$btn.prop('disabled', false).text('+ <?php echo esc_js( __( 'Agregar colaborador', 'sportcriss-lite' ) ); ?>');
 			}
 		}).fail(function() {
 			scl_flash('Error de conexión.', 'error');
-		}).always(function() {
-			$btn.prop('disabled', false).text('+ <?php echo esc_js( __( 'Asignar', 'sportcriss-lite' ) ); ?>');
+			$btn.prop('disabled', false).text('+ <?php echo esc_js( __( 'Agregar colaborador', 'sportcriss-lite' ) ); ?>');
 		});
 	});
 
-	// Revocar colaborador
-	$(document).on('click', '.scl-revocar-colaborador-btn', function() {
-		var id     = $(this).data('id');
-		var nombre = $(this).data('nombre');
-		if (!confirm('¿Revocar el acceso de "' + nombre + '"? El usuario perderá su rol de colaborador.')) return;
-
+	// Revocar colaborador (elimina la cuenta)
+	window.scl_revocar_colaborador = function(id, nombre) {
+		if (!confirm('¿Revocar acceso de ' + nombre + '? Su cuenta será eliminada.')) return;
 		$.post(scl_ajax.url, {
-			action:         'scl_revocar_colaborador',
-			nonce:          scl_ajax.nonce,
-			colaborador_id: id,
+			action:          'scl_revocar_colaborador',
+			nonce:           scl_ajax.nonce,
+			colaborador_id:  id,
 		}, function(res) {
 			if (res.success) {
-				$('#scl-colaborador-' + id).fadeOut(300, function() { $(this).remove(); });
-				scl_flash('Colaborador revocado.');
+				$('#scl-col-' + id).fadeOut(300, function() { $(this).remove(); });
+				scl_flash('Acceso revocado correctamente.');
 			} else {
 				scl_flash(res.data || 'Error al revocar.', 'error');
 			}
 		});
-	});
+	};
 
 });
 </script>

@@ -51,42 +51,68 @@ if ( $es_editar ) {
 }
 
 $criterios = [
-	'diferencia_goles' => 'Diferencia de goles',
-	'goles_favor'      => 'Goles a favor',
-	'goles_contra'     => 'Goles en contra (menor es mejor)',
-	'enfrentamiento_directo' => 'Enfrentamiento directo'
+	'diferencia_goles'       => 'Diferencia de goles',
+	'goles_favor'            => 'Goles a favor',
+	'goles_contra'           => 'Goles en contra (menor es mejor)',
+	'enfrentamiento_directo' => 'Enfrentamiento directo',
 ];
 
 $orden_arr = json_decode( $desempate_orden, true );
 if ( ! is_array( $orden_arr ) ) $orden_arr = array_keys( $criterios );
 
+$logo_url  = $logo_id  ? ( wp_get_attachment_image_url( $logo_id,  'thumbnail' ) ?: '' ) : '';
+$fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' ) ?: '' ) : '';
 ?>
-<div class="scl-card">
-	<h2><?php echo $es_editar ? 'Editar Torneo: ' . esc_html( $nombre ) : 'Nuevo Torneo'; ?></h2>
-	<input type="hidden" id="scl_torneo_id" value="<?php echo esc_attr( $torneo_id ); ?>">
+
+<div class="scl-page-header">
+	<h1 class="scl-page-title"><?php echo $es_editar ? 'Editar Torneo: ' . esc_html( $nombre ) : 'Nuevo Torneo'; ?></h1>
+</div>
+
+<input type="hidden" id="scl_torneo_id_editar" value="<?php echo esc_attr( $torneo_id ); ?>">
+
+<div class="scl-form-container">
 
 	<!-- Sección 1: Identidad -->
 	<div class="scl-form-section">
 		<h3>Identidad</h3>
-		<div class="scl-field">
-			<label>Nombre del torneo *</label>
-			<input type="text" id="scl_nombre" maxlength="100" required value="<?php echo esc_attr( $nombre ); ?>">
-		</div>
-		<div class="scl-field scl-field--half">
-			<label>Siglas * <span class="scl-hint">(máx. 6 caracteres)</span></label>
-			<input type="text" id="scl_siglas" maxlength="6" value="<?php echo esc_attr( $siglas ); ?>">
-			<small>Se usará en títulos de partidos: [TLC]</small>
-		</div>
-		<div class="scl-field">
-			<label>Logo del torneo</label>
-			<div class="scl-uploader" id="scl_logo_uploader">
-				<div class="scl-uploader__preview" id="scl_logo_preview">
-					<?php if ( $logo_id ) echo wp_get_attachment_image( $logo_id, 'thumbnail' ); ?>
-				</div>
-				<button type="button" class="scl-btn scl-btn--outline" id="scl_logo_btn">Seleccionar logo</button>
-				<input type="file" id="scl_logo_file" accept="image/*" style="display:none;">
-				<input type="hidden" id="scl_logo_id" name="scl_logo_id" value="<?php echo esc_attr( $logo_id ); ?>">
+		<div class="scl-field-row">
+			<div class="scl-field" style="flex:2">
+				<label>Nombre del torneo *</label>
+				<input type="text" id="scl_nombre" maxlength="100" required
+				       value="<?php echo esc_attr( $nombre ); ?>"
+				       placeholder="Ej: Torneo Las Colinas">
 			</div>
+			<div class="scl-field" style="flex:1">
+				<label>Siglas * <span class="scl-hint">(máx. 6)</span></label>
+				<input type="text" id="scl_siglas" maxlength="6"
+				       value="<?php echo esc_attr( $siglas ); ?>"
+				       placeholder="TLC" style="text-transform:uppercase">
+			</div>
+		</div>
+
+		<!-- Logo -->
+		<div class="scl-field" style="max-width:360px">
+			<label>Logo del torneo</label>
+			<div class="scl-file-uploader" id="scl_logo_dropzone">
+				<input type="file" id="scl_logo_file" accept="image/jpeg,image/png,image/webp,image/svg+xml">
+				<div id="scl_logo_content">
+					<?php if ( $logo_url ) : ?>
+						<img src="<?php echo esc_url( $logo_url ); ?>"
+						     class="scl-file-uploader__preview" alt="Logo">
+						<p class="scl-file-uploader__text"><small>Haz clic para cambiar</small></p>
+					<?php else : ?>
+						<div class="scl-file-uploader__icon">&#128444;</div>
+						<p class="scl-file-uploader__text">
+							Haz clic o arrastra tu logo aquí<br>
+							<small>JPG, PNG, WebP o SVG &middot; Máx. 2MB</small>
+						</p>
+					<?php endif; ?>
+				</div>
+				<div class="scl-file-uploader__progress">
+					<div class="scl-file-uploader__progress-bar" id="scl_logo_progress"></div>
+				</div>
+			</div>
+			<input type="hidden" id="scl_logo_id" value="<?php echo esc_attr( $logo_id ); ?>">
 		</div>
 	</div>
 
@@ -119,48 +145,85 @@ if ( ! is_array( $orden_arr ) ) $orden_arr = array_keys( $criterios );
 		</p>
 		<ul class="scl-sortable" id="scl_desempate_lista">
 			<li class="scl-sortable__item scl-sortable__item--locked">
-				🔒 1. Puntos (criterio principal)
+				&#128274; 1. Puntos (criterio principal)
 			</li>
-			<?php foreach ( $orden_arr as $crit ) : 
-				if ( ! isset( $criterios[$crit] ) ) continue;
+			<?php foreach ( $orden_arr as $crit ) :
+				if ( ! isset( $criterios[ $crit ] ) ) continue;
 			?>
 				<li class="scl-sortable__item" data-value="<?php echo esc_attr( $crit ); ?>">
-					<span class="scl-drag-handle">⠿</span>
-					<span><?php echo esc_html( $criterios[$crit] ); ?></span>
+					<span class="scl-drag-handle">&#10783;</span>
+					<span><?php echo esc_html( $criterios[ $crit ] ); ?></span>
 				</li>
 			<?php endforeach; ?>
 		</ul>
-		<input type="hidden" id="scl_desempate_orden" name="scl_desempate_orden" value="<?php echo esc_attr( $desempate_orden ); ?>">
+		<input type="hidden" id="scl_desempate_orden" value="<?php echo esc_attr( $desempate_orden ); ?>">
 	</div>
 
 	<!-- Sección 4: Personalización visual -->
 	<div class="scl-form-section">
 		<h3>Personalización visual <span class="scl-hint">(para exportación de tabla)</span></h3>
-		<div class="scl-field-row">
+		<div class="scl-field-row" style="max-width:480px">
 			<div class="scl-field">
 				<label>Color primario</label>
-				<input type="color" id="scl_color_primario" value="<?php echo esc_attr( $color_primario ); ?>">
+				<div class="scl-color-field"
+				     onclick="document.getElementById('scl_color_primario').click()">
+					<input type="color" id="scl_color_primario"
+					       value="<?php echo esc_attr( $color_primario ); ?>"
+					       oninput="scl_sync_color('primario', this.value)">
+					<div class="scl-color-field__preview" id="scl_preview_primario"
+					     style="background:<?php echo esc_attr( $color_primario ); ?>"></div>
+					<span class="scl-color-field__hex" id="scl_hex_primario">
+						<?php echo esc_html( $color_primario ); ?>
+					</span>
+				</div>
 			</div>
 			<div class="scl-field">
 				<label>Color secundario</label>
-				<input type="color" id="scl_color_secundario" value="<?php echo esc_attr( $color_secundario ); ?>">
+				<div class="scl-color-field"
+				     onclick="document.getElementById('scl_color_secundario').click()">
+					<input type="color" id="scl_color_secundario"
+					       value="<?php echo esc_attr( $color_secundario ); ?>"
+					       oninput="scl_sync_color('secundario', this.value)">
+					<div class="scl-color-field__preview" id="scl_preview_secundario"
+					     style="background:<?php echo esc_attr( $color_secundario ); ?>"></div>
+					<span class="scl-color-field__hex" id="scl_hex_secundario">
+						<?php echo esc_html( $color_secundario ); ?>
+					</span>
+				</div>
 			</div>
 		</div>
-		<div class="scl-field">
+
+		<!-- Fondo -->
+		<div class="scl-field" style="max-width:360px; margin-top:1rem">
 			<label>Imagen de fondo</label>
-			<div class="scl-uploader" id="scl_fondo_uploader">
-				<div class="scl-uploader__preview" id="scl_fondo_preview">
-					<?php if ( $fondo_id ) echo wp_get_attachment_image( $fondo_id, 'thumbnail' ); ?>
+			<div class="scl-file-uploader" id="scl_fondo_dropzone">
+				<input type="file" id="scl_fondo_file" accept="image/jpeg,image/png,image/webp">
+				<div id="scl_fondo_content">
+					<?php if ( $fondo_url ) : ?>
+						<img src="<?php echo esc_url( $fondo_url ); ?>"
+						     class="scl-file-uploader__preview" alt="Fondo">
+						<p class="scl-file-uploader__text"><small>Haz clic para cambiar</small></p>
+					<?php else : ?>
+						<div class="scl-file-uploader__icon">&#128247;</div>
+						<p class="scl-file-uploader__text">
+							Haz clic o arrastra tu imagen de fondo<br>
+							<small>JPG, PNG o WebP &middot; Máx. 2MB</small>
+						</p>
+					<?php endif; ?>
 				</div>
-				<button type="button" class="scl-btn scl-btn--outline" id="scl_fondo_btn">Seleccionar fondo</button>
-				<input type="file" id="scl_fondo_file" accept="image/*" style="display:none;">
-				<input type="hidden" id="scl_fondo_id" name="scl_fondo_id" value="<?php echo esc_attr( $fondo_id ); ?>">
+				<div class="scl-file-uploader__progress">
+					<div class="scl-file-uploader__progress-bar" id="scl_fondo_progress"></div>
+				</div>
 			</div>
+			<input type="hidden" id="scl_fondo_id" value="<?php echo esc_attr( $fondo_id ); ?>">
 		</div>
 	</div>
 
 	<div class="scl-form-actions">
 		<a href="?scl_ruta=torneos" class="scl-btn scl-btn--ghost">Cancelar</a>
-		<button type="button" class="scl-btn scl-btn--primary" id="scl_guardar_torneo">Guardar torneo</button>
+		<button type="button" class="scl-btn scl-btn--primary" id="scl_guardar_torneo">
+			Guardar torneo
+		</button>
 	</div>
-</div>
+
+</div><!-- /.scl-form-container -->
