@@ -43,6 +43,7 @@ require_once SCL_PATH . 'includes/class-scl-public.php';
 require_once SCL_PATH . 'includes/class-scl-export.php';
 require_once SCL_PATH . 'includes/class-scl-ads.php';
 require_once SCL_PATH . 'includes/class-scl-ads-metrics.php';
+require_once SCL_PATH . 'includes/class-scl-admin-columns.php';
 
 // ---------------------------------------------------------------------------
 // Hooks de activación y desactivación
@@ -128,6 +129,10 @@ function scl_run() {
 	$loader->add_filter( 'query_vars',      [ $dashboard, 'registrar_query_vars' ] );
 	$loader->add_action( 'template_redirect', [ $dashboard, 'despachar' ] );
 	$loader->add_action( 'wp_enqueue_scripts', [ $dashboard, 'encolar_assets' ] );
+
+	// Columnas personalizadas en wp-admin
+	$admin_columns = new Scl_Admin_Columns();
+	$admin_columns->registrar( $loader );
 
 	// Handlers AJAX
 	$ajax = new Scl_Ajax();

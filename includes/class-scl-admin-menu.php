@@ -176,15 +176,160 @@ class Scl_Admin_Menu {
 	/**
 	 * Página de configuración del plugin.
 	 */
-	public function render_configuracion() {
+	public function render_configuracion(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'No tienes permisos para acceder a esta página.', 'sportcriss-lite' ) );
 		}
+
+		// Guardar si viene el form
+		if ( isset( $_POST['scl_config_nonce'] )
+			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_config_nonce'] ) ), 'scl_guardar_config' ) ) {
+			update_option( 'scl_portal_nombre',       sanitize_text_field( wp_unslash( $_POST['scl_portal_nombre'] ?? '' ) ) );
+			update_option( 'scl_importador_limite',   absint( $_POST['scl_importador_limite'] ?? 500 ) );
+			update_option( 'scl_tabla_transient_ttl', absint( $_POST['scl_tabla_transient_ttl'] ?? 5 ) );
+			add_settings_error( 'scl_config', 'guardado', 'Configuración guardada.', 'success' );
+		}
+
+		settings_errors( 'scl_config' );
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Configuración de SportCriss Lite', 'sportcriss-lite' ); ?></h1>
-			<p><?php esc_html_e( 'Próximamente habrá más opciones de configuración aquí.', 'sportcriss-lite' ); ?></p>
+			<h1>⚽ <?php esc_html_e( 'Configuración de SportCriss Lite', 'sportcriss-lite' ); ?></h1>
+			<form method="post">
+				<?php wp_nonce_field( 'scl_guardar_config', 'scl_config_nonce' ); ?>
+
+				<h2><?php esc_html_e( 'General', 'sportcriss-lite' ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th><label for="scl_portal_nombre"><?php esc_html_e( 'Nombre del portal', 'sportcriss-lite' ); ?></label></th>
+						<td>
+							<input type="text" name="scl_portal_nombre" id="scl_portal_nombre"
+								class="regular-text"
+								value="<?php echo esc_attr( get_option( 'scl_portal_nombre', '' ) ); ?>">
+							<p class="description"><?php esc_html_e( 'Aparece en el header del dashboard y en correos del sistema.', 'sportcriss-lite' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Importador CSV', 'sportcriss-lite' ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th><label for="scl_importador_limite"><?php esc_html_e( 'Límite de filas por importación', 'sportcriss-lite' ); ?></label></th>
+						<td>
+							<input type="number" name="scl_importador_limite" id="scl_importador_limite"
+								class="small-text" min="50" max="2000"
+								value="<?php echo esc_attr( get_option( 'scl_importador_limite', 500 ) ); ?>">
+							<p class="description"><?php esc_html_e( 'Default: 500. Máximo recomendado en Hostinger Shared: 1000.', 'sportcriss-lite' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Performance', 'sportcriss-lite' ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th><label for="scl_tabla_transient_ttl"><?php esc_html_e( 'Cache de tabla (minutos)', 'sportcriss-lite' ); ?></label></th>
+						<td>
+							<input type="number" name="scl_tabla_transient_ttl" id="scl_tabla_transient_ttl"
+								class="small-text" min="1" max="60"
+								value="<?php echo esc_attr( get_option( 'scl_tabla_transient_ttl', 5 ) ); ?>">
+							<p class="description"><?php esc_html_e( 'Minutos que se cachea la tabla de posiciones. Se invalida automáticamente al guardar un resultado.', 'sportcriss-lite' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<h2><?php esc_html_e( 'Datos del sistema', 'sportcriss-lite' ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th><?php esc_html_e( 'Versión del plugin', 'sportcriss-lite' ); ?></th>
+						<td><code><?php echo esc_html( SCL_VERSION ); ?></code></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Organizadores registrados', 'sportcriss-lite' ); ?></th>
+						<td><?php echo esc_html( count( get_users( [ 'role' => 'scl_organizador' ] ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Colaboradores registrados', 'sportcriss-lite' ); ?></th>
+						<td><?php echo esc_html( count( get_users( [ 'role' => 'scl_colaborador' ] ) ) ); ?></td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Tabla de log de anuncios', 'sportcriss-lite' ); ?></th>
+						<td>
+							<?php
+							global $wpdb;
+							$tabla  = $wpdb->prefix . 'scl_ad_log';
+							// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+							$existe = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $tabla ) ) === $tabla;
+							echo $existe ? '✅ Activa' : '❌ No encontrada';
+							?>
+						</td>
+					</tr>
+				</table>
+
+				<h2 style="color:#dc3545"><?php esc_html_e( 'Zona de peligro', 'sportcriss-lite' ); ?></h2>
+				<table class="form-table">
+					<tr>
+						<th><?php esc_html_e( 'Limpiar transients', 'sportcriss-lite' ); ?></th>
+						<td>
+							<button type="button" class="button" id="scl_limpiar_transients">
+								<?php esc_html_e( 'Limpiar cache de tablas', 'sportcriss-lite' ); ?>
+							</button>
+							<span id="scl_transients_result" style="margin-left:8px"></span>
+							<p class="description"><?php esc_html_e( 'Elimina todos los transients de tablas de posiciones. Se regeneran automáticamente en la próxima visita.', 'sportcriss-lite' ); ?></p>
+						</td>
+					</tr>
+					<tr>
+						<th><?php esc_html_e( 'Recalcular todas las tablas', 'sportcriss-lite' ); ?></th>
+						<td>
+							<button type="button" class="button" id="scl_recalcular_todo">
+								<?php esc_html_e( 'Recalcular todas las tablas', 'sportcriss-lite' ); ?>
+							</button>
+							<span id="scl_recalcular_result" style="margin-left:8px"></span>
+							<p class="description"><?php esc_html_e( 'Recalcula la tabla de posiciones de cada temporada activa. Útil si se detectan inconsistencias.', 'sportcriss-lite' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
+				<?php submit_button( __( 'Guardar configuración', 'sportcriss-lite' ) ); ?>
+			</form>
 		</div>
+
+		<script>
+		jQuery(document).ready(function($) {
+			var nonce = '<?php echo esc_js( wp_create_nonce( 'scl_admin_actions' ) ); ?>';
+
+			$('#scl_limpiar_transients').on('click', function() {
+				var $btn = $(this);
+				$btn.prop('disabled', true).text('<?php echo esc_js( __( 'Limpiando…', 'sportcriss-lite' ) ); ?>');
+				$.post(ajaxurl, {
+					action: 'scl_limpiar_transients',
+					nonce:  nonce,
+				}, function(res) {
+					$('#scl_transients_result').text(
+						res.success
+							? '✅ ' + res.data.eliminados + ' transients eliminados'
+							: '❌ Error'
+					);
+					$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Limpiar cache de tablas', 'sportcriss-lite' ) ); ?>');
+				});
+			});
+
+			$('#scl_recalcular_todo').on('click', function() {
+				if ( ! confirm('<?php echo esc_js( __( '¿Recalcular todas las tablas? Puede tardar unos segundos.', 'sportcriss-lite' ) ); ?>') ) return;
+				var $btn = $(this);
+				$btn.prop('disabled', true).text('<?php echo esc_js( __( 'Calculando…', 'sportcriss-lite' ) ); ?>');
+				$.post(ajaxurl, {
+					action: 'scl_recalcular_todas_tablas',
+					nonce:  nonce,
+				}, function(res) {
+					$('#scl_recalcular_result').text(
+						res.success
+							? '✅ ' + res.data.temporadas + ' temporadas recalculadas'
+							: '❌ Error'
+					);
+					$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Recalcular todas las tablas', 'sportcriss-lite' ) ); ?>');
+				});
+			});
+		});
+		</script>
 		<?php
 	}
 }

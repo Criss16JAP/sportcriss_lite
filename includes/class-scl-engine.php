@@ -241,6 +241,12 @@ class Scl_Engine {
 
 		update_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_cache", wp_json_encode( $cache ) );
 		update_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_updated_at", current_time( 'c' ) );
+
+		// Invalidar transients de todas las vistas de esta tabla
+		$grupos_ids = array_merge( [ 'general' ], wp_list_pluck( scl_get_grupos_por_torneo( $torneo_id ), 'ID' ) );
+		foreach ( $grupos_ids as $gid ) {
+			delete_transient( 'scl_tabla_' . $torneo_id . '_' . $temporada_term_id . '_' . $gid );
+		}
 	}
 
 	/**
@@ -278,11 +284,20 @@ class Scl_Engine {
  * @return array
  */
 function scl_get_tabla( int $torneo_id, int $temporada_term_id, $grupo_id = 'general' ): array {
+	$transient_key = 'scl_tabla_' . $torneo_id . '_' . $temporada_term_id . '_' . $grupo_id;
+	$cached = get_transient( $transient_key );
+	if ( false !== $cached ) return $cached;
+
 	$raw = get_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_cache", true );
 	if ( ! $raw ) return [];
 	$cache = json_decode( $raw, true );
 	if ( ! is_array( $cache ) || ! isset( $cache['tablas'] ) ) return [];
-	return $cache['tablas'][ $grupo_id ] ?? [];
+	$result = $cache['tablas'][ $grupo_id ] ?? [];
+
+	$ttl = (int) get_option( 'scl_tabla_transient_ttl', 5 );
+	set_transient( $transient_key, $result, $ttl * MINUTE_IN_SECONDS );
+
+	return $result;
 }
 
 /**

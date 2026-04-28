@@ -60,6 +60,9 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_get_export_url', [ $this, 'ajax_get_export_url' ] );
 		// Sprint 10B: Tiers de anunciantes
 		$loader->add_action( 'wp_ajax_scl_get_tier_anunciante', [ $this, 'get_tier_anunciante' ] );
+		// Sprint 12: Zona de peligro (solo administrator)
+		$loader->add_action( 'wp_ajax_scl_limpiar_transients',       [ $this, 'limpiar_transients' ] );
+		$loader->add_action( 'wp_ajax_scl_recalcular_todas_tablas',  [ $this, 'recalcular_todas_tablas' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -80,6 +83,55 @@ class Scl_Ajax {
 			'multiplicador' => Scl_Ads::get_multiplicador( $tier ),
 			'ubicaciones'   => Scl_Ads::TIERS[ $tier ]['ubicaciones'] ?? [],
 		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint 12: Handlers de zona de peligro (solo administrator)
+	// -----------------------------------------------------------------------
+
+	public function limpiar_transients(): void {
+		if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error();
+		check_ajax_referer( 'scl_admin_actions', 'nonce' );
+
+		global $wpdb;
+		$eliminados = (int) $wpdb->query(
+			"DELETE FROM {$wpdb->options}
+			 WHERE option_name LIKE '_transient_scl_tabla_%'
+			 OR option_name LIKE '_transient_timeout_scl_tabla_%'"
+		);
+		wp_send_json_success( [ 'eliminados' => $eliminados ] );
+	}
+
+	public function recalcular_todas_tablas(): void {
+		if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error();
+		check_ajax_referer( 'scl_admin_actions', 'nonce' );
+
+		$temporadas = get_terms( [ 'taxonomy' => 'scl_temporada', 'hide_empty' => true ] );
+		if ( is_wp_error( $temporadas ) ) {
+			wp_send_json_error( 'No se pudo obtener las temporadas.' );
+		}
+
+		$engine   = new Scl_Engine();
+		$contador = 0;
+
+		foreach ( $temporadas as $temporada ) {
+			$partidos = get_posts( [
+				'post_type'      => 'scl_partido',
+				'post_status'    => 'publish',
+				'posts_per_page' => 1,
+				'fields'         => 'ids',
+				'tax_query'      => [ [ 'taxonomy' => 'scl_temporada', 'terms' => $temporada->term_id ] ],
+			] );
+			if ( empty( $partidos ) ) continue;
+
+			$torneo_id = (int) get_post_meta( $partidos[0], 'scl_partido_torneo_id', true );
+			if ( ! $torneo_id ) continue;
+
+			$engine->recalcular_tabla( $torneo_id, $temporada->term_id );
+			$contador++;
+		}
+
+		wp_send_json_success( [ 'temporadas' => $contador ] );
 	}
 
 	public function get_grupos_por_torneo(): void {

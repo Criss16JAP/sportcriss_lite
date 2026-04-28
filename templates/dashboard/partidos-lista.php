@@ -96,6 +96,23 @@ if ( ! empty( $mis_torneo_ids ) || $torneo_filtro ) {
 }
 
 // ── Agrupar: tipo_fase → jornada → partidos ────────────────────────────────
+// Priming de caché: evita N+1 queries en el loop
+if ( ! empty( $partidos ) ) {
+	$partido_ids = wp_list_pluck( $partidos, 'ID' );
+	update_meta_cache( 'post', $partido_ids );
+
+	// Recopilar IDs de equipos únicos para pre-cargar sus metas también
+	$equipo_ids = [];
+	foreach ( $partidos as $p ) {
+		$equipo_ids[] = (int) get_post_meta( $p->ID, 'scl_partido_equipo_local_id',  true );
+		$equipo_ids[] = (int) get_post_meta( $p->ID, 'scl_partido_equipo_visita_id', true );
+	}
+	$equipo_ids = array_unique( array_filter( $equipo_ids ) );
+	if ( ! empty( $equipo_ids ) ) {
+		update_meta_cache( 'post', $equipo_ids );
+	}
+}
+
 $grupos_render = [];
 foreach ( $partidos as $partido ) {
 	$tipo    = get_post_meta( $partido->ID, 'scl_partido_tipo_fase', true ) ?: 'grupos';
