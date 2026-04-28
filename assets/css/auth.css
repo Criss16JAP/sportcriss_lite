@@ -178,3 +178,21 @@ body.scl-auth-body {
 	text-decoration: none;
 }
 .scl-auth-footer-text a:hover { color: rgba(255,255,255,0.8); }
+
+/* Fila de dos campos (nombre + apellido en registro) */
+.scl-auth-field-row {
+	display: flex;
+	gap: 0.75rem;
+}
+.scl-auth-field-row .scl-auth-field { flex: 1; min-width: 0; }
+
+/* Hint de validación junto al label */
+.scl-auth-hint {
+	font-weight: 400;
+	font-size: 0.78rem;
+	color: #999;
+}
+
+@media ( max-width: 400px ) {
+	.scl-auth-field-row { flex-direction: column; gap: 0; }
+}

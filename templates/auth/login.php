@@ -77,8 +77,10 @@
 	</div>
 
 	<p class="scl-auth-footer-text">
-		<?php echo esc_html( get_option('scl_portal_nombre', 'SportCriss Lite') ); ?> ·
-		<a href="<?php echo esc_url( home_url('/') ); ?>">Volver al sitio</a>
+		&#x270D; ¿No tienes cuenta?
+		<a href="<?php echo esc_url( home_url( '/registro/' ) ); ?>">Regístrate</a>
+		&nbsp;&middot;&nbsp;
+		<a href="<?php echo esc_url( home_url( '/' ) ); ?>">Volver al sitio</a>
 	</p>
 </div>
 

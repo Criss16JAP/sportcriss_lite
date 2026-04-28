@@ -92,6 +92,18 @@ function scl_activar_plugin() {
 			'post_content' => '[scl_login]',
 		] );
 	}
+
+	// Página de registro de nuevos organizadores
+	$registro_page = get_page_by_path( 'registro' );
+	if ( ! $registro_page ) {
+		wp_insert_post( [
+			'post_title'   => 'Registro',
+			'post_name'    => 'registro',
+			'post_status'  => 'publish',
+			'post_type'    => 'page',
+			'post_content' => '[scl_registro]',
+		] );
+	}
 }
 
 /**
