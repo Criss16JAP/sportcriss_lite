@@ -432,10 +432,11 @@ jQuery(document).ready(function($) {
 		scl_equipo_eliminar($(this).data('id'), $(this).data('nombre'));
 	});
 
+	// Botón principal "Nuevo Equipo" en el header de la lista
+	$(document).on('click', '#scl_nuevo_equipo_btn', scl_equipo_nuevo);
+
 	// Botón "Registrar primer equipo" en estado vacío
-	$(document).on('click', '#scl_nuevo_equipo_btn_empty', function() {
-		scl_equipo_nuevo();
-	});
+	$(document).on('click', '#scl_nuevo_equipo_btn_empty', scl_equipo_nuevo);
 
 	// Placeholder con inicial del nombre mientras se escribe
 	$(document).on('input', '#scl_equipo_nombre', function() {

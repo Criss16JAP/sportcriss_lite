@@ -4,10 +4,10 @@
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-$torneo_id = absint( $_GET['scl_id'] ?? 0 );
+$torneo_id = $id;
 $torneo = get_post( $torneo_id );
 
-if ( ! $torneo || 'scl_torneo' !== $torneo->post_type || $torneo->post_author != $usuario->ID ) {
+if ( ! $torneo || 'scl_torneo' !== $torneo->post_type || $torneo->post_author != get_current_user_id() ) {
 	echo '<div class="scl-flash scl-flash--error">Torneo no válido o sin permisos.</div>';
 	return;
 }
