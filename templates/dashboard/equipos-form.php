@@ -47,7 +47,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 					<?php esc_html_e( 'Nombre del equipo', 'sportcriss-lite' ); ?> <span aria-hidden="true">*</span>
 				</label>
 				<input type="text" id="scl_equipo_nombre" maxlength="100"
-				       placeholder="<?php esc_attr_e( 'Ej: San Pedro FC', 'sportcriss-lite' ); ?>">
+				       placeholder="<?php esc_attr_e( 'Ej: Real Madrid CF', 'sportcriss-lite' ); ?>">
 			</div>
 
 			<!-- Zona -->
@@ -56,7 +56,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 					<?php esc_html_e( 'Zona / Región', 'sportcriss-lite' ); ?>
 				</label>
 				<input type="text" id="scl_equipo_zona" maxlength="100"
-				       placeholder="<?php esc_attr_e( 'Ej: Norte, Barranquilla, Zona Centro', 'sportcriss-lite' ); ?>">
+				       placeholder="<?php esc_attr_e( 'Ej: Colinas del pando, Santa Marta', 'sportcriss-lite' ); ?>">
 			</div>
 		</div>
 
