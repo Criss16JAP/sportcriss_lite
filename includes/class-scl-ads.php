@@ -11,8 +11,94 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class Scl_Ads {
 
+	// -------------------------------------------------------------------------
+	// Sistema de tiers de anunciantes
+	// -------------------------------------------------------------------------
+
+	const TIERS = [
+		'diamante' => [
+			'multiplicador' => 5,
+			'ubicaciones'   => [
+				'home_destacado',
+				'header_publico',
+				'sidebar_tabla',
+				'tabla_posiciones',
+				'entre_partidos',
+				'footer_publico',
+			],
+			'label'  => 'Diamante',
+			'emoji'  => '💎',
+			'color'  => '#00bcd4',
+		],
+		'platino' => [
+			'multiplicador' => 4,
+			'ubicaciones'   => [
+				'header_publico',
+				'sidebar_tabla',
+				'tabla_posiciones',
+				'entre_partidos',
+				'footer_publico',
+			],
+			'label'  => 'Platino',
+			'emoji'  => '⬜',
+			'color'  => '#9e9e9e',
+		],
+		'oro' => [
+			'multiplicador' => 3,
+			'ubicaciones'   => [
+				'sidebar_tabla',
+				'tabla_posiciones',
+				'entre_partidos',
+				'footer_publico',
+			],
+			'label'  => 'Oro',
+			'emoji'  => '🥇',
+			'color'  => '#ffc107',
+		],
+		'plata' => [
+			'multiplicador' => 2,
+			'ubicaciones'   => [
+				'entre_partidos',
+				'footer_publico',
+			],
+			'label'  => 'Plata',
+			'emoji'  => '🥈',
+			'color'  => '#78909c',
+		],
+		'bronce' => [
+			'multiplicador' => 1,
+			'ubicaciones'   => [
+				'footer_publico',
+			],
+			'label'  => 'Bronce',
+			'emoji'  => '🥉',
+			'color'  => '#8d6e63',
+		],
+	];
+
+	// -------------------------------------------------------------------------
+	// Métodos auxiliares estáticos de tier
+	// -------------------------------------------------------------------------
+
+	public static function get_tier_anunciante( int $anunciante_id ): string {
+		return get_post_meta( $anunciante_id, 'scl_anunciante_tier', true ) ?: 'bronce';
+	}
+
+	public static function tier_tiene_acceso( string $tier, string $ubicacion ): bool {
+		return in_array( $ubicacion, self::TIERS[ $tier ]['ubicaciones'] ?? [], true );
+	}
+
+	public static function get_multiplicador( string $tier ): int {
+		return self::TIERS[ $tier ]['multiplicador'] ?? 1;
+	}
+
+	// -------------------------------------------------------------------------
+	// Registro de hooks
+	// -------------------------------------------------------------------------
+
 	public function init(): void {
-		add_shortcode( 'scl_anuncio', [ $this, 'shortcode_anuncio' ] );
+		add_shortcode( 'scl_anuncio',          [ $this, 'shortcode_anuncio' ] );
+		add_shortcode( 'scl_anuncio_destacado', [ $this, 'shortcode_destacado' ] );
 		add_action( 'wp_ajax_nopriv_scl_track_ad', [ $this, 'track_evento' ] );
 		add_action( 'wp_ajax_scl_track_ad',        [ $this, 'track_evento' ] );
 		add_action( 'wp_ajax_scl_recalcular_metricas_anuncio', [ $this, 'recalcular_metricas' ] );
@@ -74,33 +160,99 @@ class Scl_Ads {
 
 		if ( empty( $anuncios ) ) return null;
 
-		// Filtrar por ubicación (almacenada como array serializado)
+		// Filtrar por:
+		// 1. Ubicación seleccionada en el anuncio (array serializado)
+		// 2. Límite de impresiones no superado
+		// 3. El tier del anunciante tiene acceso a esta ubicación
 		$anuncios = array_filter( $anuncios, function( $a ) use ( $ubicacion ) {
+			// Verificar que el anuncio esté configurado para esta ubicación
 			$ubs = get_post_meta( $a->ID, 'scl_anuncio_ubicacion', true );
-			if ( ! is_array( $ubs ) ) return false;
-			return in_array( $ubicacion, $ubs, true );
-		} );
+			if ( ! is_array( $ubs ) || ! in_array( $ubicacion, $ubs, true ) ) return false;
 
-		// Filtrar por límite de impresiones
-		$anuncios = array_filter( $anuncios, function( $a ) {
-			$limite  = (int) get_post_meta( $a->ID, 'scl_anuncio_impresiones_limite', true );
-			if ( 0 === $limite ) return true;
+			// Verificar límite de impresiones
+			$limite   = (int) get_post_meta( $a->ID, 'scl_anuncio_impresiones_limite', true );
 			$actuales = (int) get_post_meta( $a->ID, 'scl_anuncio_impresiones', true );
-			return $actuales < $limite;
+			if ( $limite > 0 && $actuales >= $limite ) return false;
+
+			// Verificar que el anunciante tiene tier con acceso a esta ubicación
+			$anunciante_id = (int) get_post_meta( $a->ID, 'scl_anuncio_anunciante_id', true );
+			if ( ! $anunciante_id ) return false;
+			$tier = self::get_tier_anunciante( $anunciante_id );
+			return self::tier_tiene_acceso( $tier, $ubicacion );
 		} );
 
 		if ( empty( $anuncios ) ) return null;
 
-		// Selección ponderada por peso
+		// Selección ponderada: peso_base × multiplicador_del_tier
+		// Los anunciantes Diamante tienen hasta 5x más chances de aparecer que Bronce
 		$pool = [];
 		foreach ( $anuncios as $anuncio ) {
-			$peso = max( 1, (int) get_post_meta( $anuncio->ID, 'scl_anuncio_peso', true ) );
-			for ( $i = 0; $i < $peso; $i++ ) {
+			$peso_base     = max( 1, (int) get_post_meta( $anuncio->ID, 'scl_anuncio_peso', true ) );
+			$anunciante_id = (int) get_post_meta( $anuncio->ID, 'scl_anuncio_anunciante_id', true );
+			$tier          = self::get_tier_anunciante( $anunciante_id );
+			$multiplicador = self::get_multiplicador( $tier );
+			$peso_final    = $peso_base * $multiplicador;
+
+			for ( $i = 0; $i < $peso_final; $i++ ) {
 				$pool[] = $anuncio;
 			}
 		}
 
 		return $pool[ array_rand( $pool ) ];
+	}
+
+	// -------------------------------------------------------------------------
+	// Shortcode especial para home_destacado (solo Diamante)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * [scl_anuncio_destacado tipo="horizontal"]
+	 * Renderizado más prominente para la ubicación home_destacado.
+	 */
+	public function shortcode_destacado( array $atts ): string {
+		$atts = shortcode_atts( [
+			'tipo' => 'horizontal',
+		], $atts, 'scl_anuncio_destacado' );
+
+		$anuncio = $this->seleccionar_anuncio(
+			'home_destacado',
+			sanitize_key( $atts['tipo'] )
+		);
+
+		if ( ! $anuncio ) return '';
+
+		// Render especial para Diamante — más prominente
+		$imagen_id         = (int) get_post_meta( $anuncio->ID, 'scl_anuncio_imagen',      true );
+		$imagen_url        = $imagen_id ? wp_get_attachment_image_url( $imagen_id, 'full' ) : '';
+		$url_destino       = get_post_meta( $anuncio->ID, 'scl_anuncio_url_destino', true );
+		$titulo            = get_the_title( $anuncio->ID );
+		$anunciante_id     = (int) get_post_meta( $anuncio->ID, 'scl_anuncio_anunciante_id', true );
+
+		if ( ! $imagen_url ) return '';
+
+		$clic_url  = add_query_arg( [
+			'scl_ad_clic' => $anuncio->ID,
+			'scl_nonce'   => wp_create_nonce( 'scl_ad_' . $anuncio->ID ),
+		], home_url( '/' ) );
+		$nonce_imp = wp_create_nonce( 'scl_ad_imp_' . $anuncio->ID );
+
+		ob_start();
+		?>
+		<div class="scl-ad scl-ad--destacado scl-ad--<?php echo esc_attr( $atts['tipo'] ); ?>"
+		     data-ad-id="<?php echo esc_attr( $anuncio->ID ); ?>"
+		     data-nonce="<?php echo esc_attr( $nonce_imp ); ?>">
+			<a href="<?php echo esc_url( $clic_url ); ?>"
+			   target="_blank" rel="noopener sponsored"
+			   class="scl-ad__link"
+			   aria-label="<?php echo esc_attr( $titulo ); ?>">
+				<img src="<?php echo esc_url( $imagen_url ); ?>"
+				     alt="<?php echo esc_attr( $titulo ); ?>"
+				     class="scl-ad__img" loading="eager">
+			</a>
+			<span class="scl-ad__label">Publicidad</span>
+		</div>
+		<?php
+		return ob_get_clean();
 	}
 
 	private function render_anuncio( WP_Post $anuncio ): string {

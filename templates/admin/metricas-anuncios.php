@@ -115,31 +115,36 @@ $export_nonce = wp_create_nonce( 'scl_exportar_metricas' );
             </thead>
             <tbody>
                 <?php foreach ( $por_anunciante as $aid => $datos ) :
-                    $anunciante = get_post( $aid );
-                    if ( ! $anunciante ) continue;
-                    $imp_a  = $datos['impresiones'];
-                    $clic_a = $datos['clics'];
-                    $ctr_a  = $imp_a > 0 ? round( ( $clic_a / $imp_a ) * 100, 2 ) : 0;
-                    $csv_url = add_query_arg( [
-                        'action'         => 'scl_exportar_metricas_anunciante',
-                        'anunciante_id'  => $aid,
-                        'desde'          => $desde,
-                        'hasta'          => $hasta,
-                        'nonce'          => $export_nonce,
-                    ], admin_url( 'admin-ajax.php' ) );
-                ?>
-                    <tr>
-                        <td><?php echo esc_html( $anunciante->post_title ); ?></td>
-                        <td><?php echo number_format( $imp_a ); ?></td>
-                        <td><?php echo number_format( $clic_a ); ?></td>
-                        <td><?php echo esc_html( $ctr_a ); ?>%</td>
-                        <td>
-                            <a href="<?php echo esc_url( $csv_url ); ?>" class="button button-small">
-                                ⬇ CSV
-                            </a>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
+					$anunciante = get_post( $aid );
+					if ( ! $anunciante ) continue;
+					$tier   = Scl_Ads::get_tier_anunciante( (int) $aid );
+					$tinfo  = Scl_Ads::TIERS[ $tier ];
+					$imp_a  = $datos['impresiones'];
+					$clic_a = $datos['clics'];
+					$ctr_a  = $imp_a > 0 ? round( ( $clic_a / $imp_a ) * 100, 2 ) : 0;
+					$csv_url = add_query_arg( [
+						'action'         => 'scl_exportar_metricas_anunciante',
+						'anunciante_id'  => $aid,
+						'desde'          => $desde,
+						'hasta'          => $hasta,
+						'nonce'          => $export_nonce,
+					], admin_url( 'admin-ajax.php' ) );
+				?>
+					<tr>
+						<td>
+							<span class="scl-tier-badge" style="background:<?php echo esc_attr( $tinfo['color'] ); ?>">
+								<?php echo esc_html( $tinfo['emoji'] . ' ' . $tinfo['label'] ); ?>
+							</span>
+							<?php echo esc_html( $anunciante->post_title ); ?>
+						</td>
+						<td><?php echo number_format( $imp_a ); ?></td>
+						<td><?php echo number_format( $clic_a ); ?></td>
+						<td><?php echo esc_html( $ctr_a ); ?>%</td>
+						<td>
+							<a href="<?php echo esc_url( $csv_url ); ?>" class="button button-small">⬇ CSV</a>
+						</td>
+					</tr>
+				<?php endforeach; ?>
             </tbody>
         </table>
     </div>

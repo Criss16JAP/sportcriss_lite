@@ -58,6 +58,28 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_descargar_plantilla',   [ $this, 'ajax_descargar_plantilla' ] );
 		// Sprint 9: Exportación Visual
 		$loader->add_action( 'wp_ajax_scl_get_export_url', [ $this, 'ajax_get_export_url' ] );
+		// Sprint 10B: Tiers de anunciantes
+		$loader->add_action( 'wp_ajax_scl_get_tier_anunciante', [ $this, 'get_tier_anunciante' ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint 10B: Tier de anunciante (para meta box dinámico del anuncio)
+	// -----------------------------------------------------------------------
+
+	public function get_tier_anunciante(): void {
+		if ( ! current_user_can( 'manage_options' ) ) wp_send_json_error();
+		if ( ! check_ajax_referer( 'scl_get_tier', 'nonce', false ) ) wp_send_json_error();
+
+		$anunciante_id = absint( $_POST['anunciante_id'] ?? 0 );
+		if ( ! $anunciante_id ) wp_send_json_error( 'anunciante_id requerido.' );
+
+		$tier = Scl_Ads::get_tier_anunciante( $anunciante_id );
+
+		wp_send_json_success( [
+			'tier'          => $tier,
+			'multiplicador' => Scl_Ads::get_multiplicador( $tier ),
+			'ubicaciones'   => Scl_Ads::TIERS[ $tier ]['ubicaciones'] ?? [],
+		] );
 	}
 
 	public function get_grupos_por_torneo(): void {

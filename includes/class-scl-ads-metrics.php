@@ -98,8 +98,11 @@ class Scl_Ads_Metrics {
 		header( 'Pragma: no-cache' );
 		echo "\xEF\xBB\xBF"; // BOM para Excel
 
-		$out = fopen( 'php://output', 'w' );
-		fputcsv( $out, [ 'Anuncio', 'Tipo', 'Estado', 'Período desde', 'Período hasta', 'Impresiones', 'Clics', 'CTR %' ] );
+		$output = fopen( 'php://output', 'w' );
+		fputcsv( $output, [ 'Tier', 'Anunciante', 'Anuncio', 'Tipo', 'Estado', 'Período desde', 'Período hasta', 'Impresiones', 'Clics', 'CTR %' ] );
+
+		$tier_label = Scl_Ads::TIERS[ Scl_Ads::get_tier_anunciante( $anunciante_id ) ]['label'] ?? 'Bronce';
+		$nombre_anunciante = get_the_title( $anunciante_id ) ?: '';
 
 		foreach ( $anuncios as $anuncio ) {
 			$imp = (int) $wpdb->get_var( $wpdb->prepare(
@@ -112,7 +115,9 @@ class Scl_Ads_Metrics {
 			) );
 			$ctr = $imp > 0 ? round( ( $clics / $imp ) * 100, 2 ) : 0;
 
-			fputcsv( $out, [
+			fputcsv( $output, [
+				$tier_label,
+				$nombre_anunciante,
 				$anuncio->post_title,
 				get_post_meta( $anuncio->ID, 'scl_anuncio_tipo',   true ),
 				get_post_meta( $anuncio->ID, 'scl_anuncio_estado', true ),
@@ -123,7 +128,7 @@ class Scl_Ads_Metrics {
 				$ctr,
 			] );
 		}
-		fclose( $out );
+		fclose( $output );
 		exit;
 	}
 }

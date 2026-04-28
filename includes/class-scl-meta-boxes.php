@@ -1439,6 +1439,32 @@ class Scl_Meta_Boxes {
 				</td>
 			</tr>
 			<tr>
+				<th><label for="scl_anunciante_tier"><?php esc_html_e( 'Tier del anunciante', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<?php
+					$tier_actual = get_post_meta( $post->ID, 'scl_anunciante_tier', true ) ?: 'bronce';
+					$tiers = [
+						'diamante' => '💎 Diamante',
+						'platino'  => '⬜ Platino',
+						'oro'      => '🥇 Oro',
+						'plata'    => '🥈 Plata',
+						'bronce'   => '🥉 Bronce',
+					];
+					?>
+					<select name="scl_anunciante_tier" id="scl_anunciante_tier">
+						<?php foreach ( $tiers as $valor => $etiqueta ) :
+							printf(
+								'<option value="%s"%s>%s</option>',
+								esc_attr( $valor ),
+								selected( $tier_actual, $valor, false ),
+								esc_html( $etiqueta )
+							);
+						endforeach; ?>
+					</select>
+					<p class="description"><?php esc_html_e( 'Define la prioridad y las ubicaciones disponibles para este anunciante.', 'sportcriss-lite' ); ?></p>
+				</td>
+			</tr>
+			<tr>
 				<th><label for="scl_anunciante_contacto"><?php esc_html_e( 'Nombre de contacto', 'sportcriss-lite' ); ?></label></th>
 				<td><input type="text" id="scl_anunciante_contacto" name="scl_anunciante_contacto"
 					value="<?php echo esc_attr( $contacto ); ?>" class="regular-text"></td>
@@ -1511,6 +1537,7 @@ class Scl_Meta_Boxes {
 			'movil'      => 'Móvil (320×50)',
 		];
 		$todas_ubicaciones = [
+			'home_destacado'   => 'Home destacado (solo Diamante)',
 			'header_publico'   => 'Header público',
 			'sidebar_tabla'    => 'Sidebar tabla',
 			'entre_partidos'   => 'Entre partidos',
@@ -1530,6 +1557,65 @@ class Scl_Meta_Boxes {
 							</option>
 						<?php endforeach; ?>
 					</select>
+				</td>
+			</tr>
+			<tr>
+				<th>Tier del anunciante</th>
+				<td>
+					<div id="scl_tier_info">
+						<?php if ( $anunciante_id ) :
+							$tier_actual_anunciante = Scl_Ads::get_tier_anunciante( $anunciante_id );
+							$info = Scl_Ads::TIERS[ $tier_actual_anunciante ];
+						?>
+							<span class="scl-tier-badge" style="background:<?php echo esc_attr( $info['color'] ); ?>">
+								<?php echo esc_html( $info['emoji'] . ' ' . $info['label'] ); ?>
+							</span>
+							<p class="description">
+								Multiplicador de peso: x<?php echo esc_html( $info['multiplicador'] ); ?><br>
+								Ubicaciones disponibles:
+								<strong><?php echo esc_html( implode( ', ', $info['ubicaciones'] ) ); ?></strong>
+							</p>
+						<?php else : ?>
+							<span class="description">Selecciona un anunciante para ver su tier.</span>
+						<?php endif; ?>
+					</div>
+					<?php $tiers_json = wp_json_encode( Scl_Ads::TIERS ); ?>
+					<script>
+					jQuery(document).ready(function($){
+						var tiers = <?php echo $tiers_json; ?>;
+
+						$('#scl_anuncio_anunciante_id').on('change', function() {
+							var anunciante_id = $(this).val();
+							if (!anunciante_id || anunciante_id === '0') {
+								$('#scl_tier_info').html('<span class="description">Selecciona un anunciante.</span>');
+								return;
+							}
+							$.post(ajaxurl, {
+								action:        'scl_get_tier_anunciante',
+								anunciante_id: anunciante_id,
+								nonce:         '<?php echo esc_js( wp_create_nonce( 'scl_get_tier' ) ); ?>',
+							}, function(res) {
+								if (!res.success) return;
+								var t    = res.data.tier;
+								var info = tiers[t];
+								if (!info) return;
+								var html = '<span class="scl-tier-badge" style="background:' + info.color + '">'
+										 + info.emoji + ' ' + info.label + '</span>'
+										 + '<p class="description">Multiplicador: x' + info.multiplicador
+										 + '<br>Ubicaciones: <strong>' + info.ubicaciones.join(', ') + '</strong></p>';
+								$('#scl_tier_info').html(html);
+
+								// Filtrar checkboxes de ubicaciones — solo mostrar las del tier
+								$('input[name="scl_anuncio_ubicacion[]"]').each(function() {
+									var ub = $(this).val();
+									var permitida = info.ubicaciones.indexOf(ub) !== -1;
+									$(this).closest('label').toggle(permitida);
+									if (!permitida) $(this).prop('checked', false);
+								});
+							});
+						});
+					});
+					</script>
 				</td>
 			</tr>
 			<tr>
@@ -1697,6 +1783,11 @@ class Scl_Meta_Boxes {
 		$estado = in_array( $_POST['scl_anunciante_estado'] ?? '', [ 'activo', 'inactivo' ], true )
 		          ? $_POST['scl_anunciante_estado'] : 'activo';
 		update_post_meta( $post_id, 'scl_anunciante_estado', $estado );
+
+		$tiers_validos = [ 'diamante', 'platino', 'oro', 'plata', 'bronce' ];
+		$tier = in_array( $_POST['scl_anunciante_tier'] ?? '', $tiers_validos, true )
+		        ? $_POST['scl_anunciante_tier'] : 'bronce';
+		update_post_meta( $post_id, 'scl_anunciante_tier', $tier );
 	}
 
 	// -----------------------------------------------------------------------
@@ -1723,7 +1814,7 @@ class Scl_Meta_Boxes {
 		        ? $_POST['scl_anuncio_tipo'] : 'cuadrado';
 		update_post_meta( $post_id, 'scl_anuncio_tipo', $tipo );
 
-		$ubs_validas = [ 'header_publico', 'sidebar_tabla', 'entre_partidos', 'footer_publico', 'tabla_posiciones' ];
+		$ubs_validas = [ 'home_destacado', 'header_publico', 'sidebar_tabla', 'entre_partidos', 'footer_publico', 'tabla_posiciones' ];
 		$ubicaciones = isset( $_POST['scl_anuncio_ubicacion'] )
 		               ? array_intersect( (array) $_POST['scl_anuncio_ubicacion'], $ubs_validas )
 		               : [];
