@@ -32,6 +32,8 @@ class Scl_Cpts {
 		self::registrar_partido();
 		self::registrar_llave();
 		self::registrar_grupo();
+		self::registrar_anunciante();
+		self::registrar_anuncio();
 	}
 
 	// -----------------------------------------------------------------------
@@ -199,6 +201,72 @@ class Scl_Cpts {
 			'show_in_menu'  => false,
 			'supports'      => [ 'title' ],
 			'rewrite'       => [ 'slug' => 'grupo', 'with_front' => false ],
+		] );
+	}
+
+	/**
+	 * CPT: scl_anunciante
+	 * Solo editable por administrator. No visible en frontend.
+	 */
+	private static function registrar_anunciante() {
+		register_post_type( 'scl_anunciante', [
+			'labels' => [
+				'name'          => __( 'Anunciantes',       'sportcriss-lite' ),
+				'singular_name' => __( 'Anunciante',        'sportcriss-lite' ),
+				'add_new_item'  => __( 'Nuevo anunciante',  'sportcriss-lite' ),
+				'edit_item'     => __( 'Editar anunciante', 'sportcriss-lite' ),
+			],
+			'public'       => false,
+			'show_ui'      => true,
+			'show_in_menu' => false,
+			'show_in_rest' => false,
+			'supports'     => [ 'title' ],
+			'capabilities' => [
+				'edit_post'     => 'manage_options',
+				'delete_post'   => 'manage_options',
+				'publish_posts' => 'manage_options',
+				'edit_posts'    => 'manage_options',
+				'edit_others_posts'   => 'manage_options',
+				'delete_posts'        => 'manage_options',
+				'delete_others_posts' => 'manage_options',
+				'read_private_posts'  => 'manage_options',
+				'edit_private_posts'  => 'manage_options',
+				'delete_private_posts'=> 'manage_options',
+			],
+		] );
+	}
+
+	/**
+	 * CPT: scl_anuncio
+	 * Jerárquico: post_parent = scl_anunciante ID.
+	 * Solo editable por administrator.
+	 */
+	private static function registrar_anuncio() {
+		register_post_type( 'scl_anuncio', [
+			'labels' => [
+				'name'          => __( 'Anuncios',       'sportcriss-lite' ),
+				'singular_name' => __( 'Anuncio',        'sportcriss-lite' ),
+				'add_new_item'  => __( 'Nuevo anuncio',  'sportcriss-lite' ),
+				'edit_item'     => __( 'Editar anuncio', 'sportcriss-lite' ),
+			],
+			'public'       => false,
+			'show_ui'      => true,
+			'show_in_menu' => false,
+			'show_in_rest' => false,
+			'hierarchical' => true,
+			'supports'     => [ 'title' ],
+			'capabilities' => [
+				'edit_post'     => 'manage_options',
+				'delete_post'   => 'manage_options',
+				'publish_posts' => 'manage_options',
+				'edit_posts'    => 'manage_options',
+				'edit_others_posts'   => 'manage_options',
+				'delete_posts'        => 'manage_options',
+				'delete_others_posts' => 'manage_options',
+				'read_private_posts'  => 'manage_options',
+				'edit_private_posts'  => 'manage_options',
+				'delete_private_posts'=> 'manage_options',
+			],
 		] );
 	}
 }

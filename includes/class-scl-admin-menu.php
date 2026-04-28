@@ -111,7 +111,35 @@ class Scl_Admin_Menu {
 
 
 
-		// Submenú: Configuración (placeholder — completado en Sprint 11)
+		// Submenú: Anunciantes (módulo publicidad)
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Anunciantes', 'sportcriss-lite' ),
+			__( '— Anunciantes', 'sportcriss-lite' ),
+			'manage_options',
+			'edit.php?post_type=scl_anunciante'
+		);
+
+		// Submenú: Anuncios
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Anuncios', 'sportcriss-lite' ),
+			__( '— Anuncios', 'sportcriss-lite' ),
+			'manage_options',
+			'edit.php?post_type=scl_anuncio'
+		);
+
+		// Submenú: Métricas de publicidad
+		add_submenu_page(
+			self::PARENT_SLUG,
+			__( 'Métricas de Publicidad — SportCriss Lite', 'sportcriss-lite' ),
+			__( '— Métricas', 'sportcriss-lite' ),
+			'manage_options',
+			'scl-metricas-anuncios',
+			[ $this, 'render_metricas_anuncios' ]
+		);
+
+		// Submenú: Configuración
 		add_submenu_page(
 			self::PARENT_SLUG,
 			__( 'Configuración — SportCriss Lite', 'sportcriss-lite' ),
@@ -141,9 +169,12 @@ class Scl_Admin_Menu {
 		exit;
 	}
 
+	public function render_metricas_anuncios(): void {
+		( new Scl_Ads_Metrics() )->render_pagina();
+	}
+
 	/**
 	 * Página de configuración del plugin.
-	 * Placeholder hasta Sprint 11 (integración con CD License Server).
 	 */
 	public function render_configuracion() {
 		if ( ! current_user_can( 'manage_options' ) ) {

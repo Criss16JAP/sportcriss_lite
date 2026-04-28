@@ -146,6 +146,36 @@ class Scl_Meta_Boxes {
 			'normal',
 			'high'
 		);
+
+		// scl_anunciante (solo administrator)
+		if ( current_user_can( 'manage_options' ) ) {
+			add_meta_box(
+				'scl_anunciante_datos',
+				__( 'Datos del anunciante', 'sportcriss-lite' ),
+				[ $this, 'render_anunciante' ],
+				'scl_anunciante',
+				'normal',
+				'high'
+			);
+
+			// scl_anuncio
+			add_meta_box(
+				'scl_anuncio_config',
+				__( 'Configuración del anuncio', 'sportcriss-lite' ),
+				[ $this, 'render_anuncio_config' ],
+				'scl_anuncio',
+				'normal',
+				'high'
+			);
+			add_meta_box(
+				'scl_anuncio_metricas',
+				__( 'Métricas', 'sportcriss-lite' ),
+				[ $this, 'render_anuncio_metricas' ],
+				'scl_anuncio',
+				'side',
+				'default'
+			);
+		}
 	}
 
 	// -----------------------------------------------------------------------
@@ -1029,6 +1059,12 @@ class Scl_Meta_Boxes {
 			case 'scl_grupo':
 				$this->guardar_grupo( $post_id, $post );
 				break;
+			case 'scl_anunciante':
+				$this->guardar_anunciante( $post_id );
+				break;
+			case 'scl_anuncio':
+				$this->guardar_anuncio( $post_id );
+				break;
 		}
 	}
 
@@ -1357,6 +1393,355 @@ class Scl_Meta_Boxes {
 	// -----------------------------------------------------------------------
 	// Helper: Media Uploader script
 	// -----------------------------------------------------------------------
+
+	// -----------------------------------------------------------------------
+	// Render: scl_anunciante
+	// -----------------------------------------------------------------------
+
+	public function render_anunciante( $post ) {
+		wp_nonce_field( 'scl_guardar_anunciante', 'scl_anunciante_nonce' );
+
+		$logo_id   = (int) get_post_meta( $post->ID, 'scl_anunciante_logo',      true );
+		$contacto  = get_post_meta( $post->ID, 'scl_anunciante_contacto',  true );
+		$email     = get_post_meta( $post->ID, 'scl_anunciante_email',     true );
+		$telefono  = get_post_meta( $post->ID, 'scl_anunciante_telefono',  true );
+		$web       = get_post_meta( $post->ID, 'scl_anunciante_web',       true );
+		$estado    = get_post_meta( $post->ID, 'scl_anunciante_estado',    true ) ?: 'activo';
+		$notas     = get_post_meta( $post->ID, 'scl_anunciante_notas',     true );
+		$logo_url  = $logo_id ? wp_get_attachment_image_url( $logo_id, 'thumbnail' ) : '';
+		?>
+		<table class="form-table">
+			<tr>
+				<th><label><?php esc_html_e( 'Logo', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<div id="scl-anunciante-logo-preview" style="margin-bottom:8px;">
+						<?php if ( $logo_url ) : ?>
+							<img src="<?php echo esc_url( $logo_url ); ?>" style="max-width:120px;max-height:120px;display:block;">
+						<?php endif; ?>
+					</div>
+					<input type="hidden" id="scl_anunciante_logo" name="scl_anunciante_logo"
+						value="<?php echo esc_attr( $logo_id ?: '' ); ?>">
+					<button type="button" class="button" id="scl-btn-anunciante-logo">
+						<?php esc_html_e( 'Seleccionar logo', 'sportcriss-lite' ); ?>
+					</button>
+					<?php if ( $logo_id ) : ?>
+						<button type="button" class="button" id="scl-btn-anunciante-logo-remove">
+							<?php esc_html_e( 'Quitar', 'sportcriss-lite' ); ?>
+						</button>
+					<?php endif; ?>
+					<?php $this->render_media_uploader_script(
+						'scl-btn-anunciante-logo',
+						'scl_anunciante_logo',
+						'scl-anunciante-logo-preview',
+						__( 'Seleccionar logo del anunciante', 'sportcriss-lite' ),
+						'scl-btn-anunciante-logo-remove'
+					); ?>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_anunciante_contacto"><?php esc_html_e( 'Nombre de contacto', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="text" id="scl_anunciante_contacto" name="scl_anunciante_contacto"
+					value="<?php echo esc_attr( $contacto ); ?>" class="regular-text"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anunciante_email"><?php esc_html_e( 'Email', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="email" id="scl_anunciante_email" name="scl_anunciante_email"
+					value="<?php echo esc_attr( $email ); ?>" class="regular-text"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anunciante_telefono"><?php esc_html_e( 'Teléfono', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="text" id="scl_anunciante_telefono" name="scl_anunciante_telefono"
+					value="<?php echo esc_attr( $telefono ); ?>" class="regular-text"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anunciante_web"><?php esc_html_e( 'Sitio web', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="url" id="scl_anunciante_web" name="scl_anunciante_web"
+					value="<?php echo esc_attr( $web ); ?>" class="regular-text"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anunciante_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_anunciante_estado" name="scl_anunciante_estado">
+						<option value="activo"   <?php selected( $estado, 'activo' ); ?>><?php esc_html_e( 'Activo', 'sportcriss-lite' ); ?></option>
+						<option value="inactivo" <?php selected( $estado, 'inactivo' ); ?>><?php esc_html_e( 'Inactivo', 'sportcriss-lite' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_anunciante_notas"><?php esc_html_e( 'Notas internas', 'sportcriss-lite' ); ?></label></th>
+				<td><textarea id="scl_anunciante_notas" name="scl_anunciante_notas"
+					rows="4" class="large-text"><?php echo esc_textarea( $notas ); ?></textarea></td>
+			</tr>
+		</table>
+		<?php
+	}
+
+	// -----------------------------------------------------------------------
+	// Render: scl_anuncio
+	// -----------------------------------------------------------------------
+
+	public function render_anuncio_config( $post ) {
+		wp_nonce_field( 'scl_guardar_anuncio', 'scl_anuncio_nonce' );
+
+		$anunciante_id       = (int) get_post_meta( $post->ID, 'scl_anuncio_anunciante_id',       true ) ?: (int) $post->post_parent;
+		$imagen_id           = (int) get_post_meta( $post->ID, 'scl_anuncio_imagen',              true );
+		$url_destino         = get_post_meta( $post->ID, 'scl_anuncio_url_destino',         true );
+		$tipo                = get_post_meta( $post->ID, 'scl_anuncio_tipo',                true ) ?: 'cuadrado';
+		$ubicaciones_meta    = get_post_meta( $post->ID, 'scl_anuncio_ubicacion',           true );
+		$ubicaciones_sel     = is_array( $ubicaciones_meta ) ? $ubicaciones_meta : ( $ubicaciones_meta ? [ $ubicaciones_meta ] : [] );
+		$fecha_inicio        = get_post_meta( $post->ID, 'scl_anuncio_fecha_inicio',        true );
+		$fecha_fin           = get_post_meta( $post->ID, 'scl_anuncio_fecha_fin',           true );
+		$imp_limite          = (int) get_post_meta( $post->ID, 'scl_anuncio_impresiones_limite', true );
+		$estado              = get_post_meta( $post->ID, 'scl_anuncio_estado',              true ) ?: 'activo';
+		$peso                = (int) get_post_meta( $post->ID, 'scl_anuncio_peso',          true ) ?: 5;
+		$imagen_url          = $imagen_id ? wp_get_attachment_image_url( $imagen_id, 'thumbnail' ) : '';
+
+		$anunciantes = get_posts( [
+			'post_type'      => 'scl_anunciante',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+
+		$tipos = [
+			'horizontal' => 'Horizontal (728×90)',
+			'vertical'   => 'Vertical (160×600)',
+			'cuadrado'   => 'Cuadrado (300×250)',
+			'movil'      => 'Móvil (320×50)',
+		];
+		$todas_ubicaciones = [
+			'header_publico'   => 'Header público',
+			'sidebar_tabla'    => 'Sidebar tabla',
+			'entre_partidos'   => 'Entre partidos',
+			'footer_publico'   => 'Footer público',
+			'tabla_posiciones' => 'Tabla de posiciones',
+		];
+		?>
+		<table class="form-table">
+			<tr>
+				<th><label for="scl_anuncio_anunciante_id"><?php esc_html_e( 'Anunciante', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_anuncio_anunciante_id" name="scl_anuncio_anunciante_id">
+						<option value="0"><?php esc_html_e( '— Seleccionar anunciante —', 'sportcriss-lite' ); ?></option>
+						<?php foreach ( $anunciantes as $a ) : ?>
+							<option value="<?php echo esc_attr( $a->ID ); ?>" <?php selected( $anunciante_id, $a->ID ); ?>>
+								<?php echo esc_html( $a->post_title ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label><?php esc_html_e( 'Imagen del banner', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<div id="scl-anuncio-imagen-preview" style="margin-bottom:8px;">
+						<?php if ( $imagen_url ) : ?>
+							<img src="<?php echo esc_url( $imagen_url ); ?>" style="max-width:200px;display:block;">
+						<?php endif; ?>
+					</div>
+					<input type="hidden" id="scl_anuncio_imagen" name="scl_anuncio_imagen"
+						value="<?php echo esc_attr( $imagen_id ?: '' ); ?>">
+					<button type="button" class="button" id="scl-btn-anuncio-imagen">
+						<?php esc_html_e( 'Seleccionar imagen', 'sportcriss-lite' ); ?>
+					</button>
+					<?php if ( $imagen_id ) : ?>
+						<button type="button" class="button" id="scl-btn-anuncio-imagen-remove">
+							<?php esc_html_e( 'Quitar', 'sportcriss-lite' ); ?>
+						</button>
+					<?php endif; ?>
+					<?php $this->render_media_uploader_script(
+						'scl-btn-anuncio-imagen',
+						'scl_anuncio_imagen',
+						'scl-anuncio-imagen-preview',
+						__( 'Seleccionar imagen del banner', 'sportcriss-lite' ),
+						'scl-btn-anuncio-imagen-remove'
+					); ?>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_url_destino"><?php esc_html_e( 'URL de destino', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="url" id="scl_anuncio_url_destino" name="scl_anuncio_url_destino"
+					value="<?php echo esc_attr( $url_destino ); ?>" class="large-text"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_tipo"><?php esc_html_e( 'Tipo de banner', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_anuncio_tipo" name="scl_anuncio_tipo">
+						<?php foreach ( $tipos as $val => $label ) : ?>
+							<option value="<?php echo esc_attr( $val ); ?>" <?php selected( $tipo, $val ); ?>>
+								<?php echo esc_html( $label ); ?>
+							</option>
+						<?php endforeach; ?>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><?php esc_html_e( 'Ubicaciones', 'sportcriss-lite' ); ?></th>
+				<td>
+					<?php foreach ( $todas_ubicaciones as $val => $label ) : ?>
+						<label style="display:block;margin-bottom:4px;">
+							<input type="checkbox" name="scl_anuncio_ubicacion[]"
+								value="<?php echo esc_attr( $val ); ?>"
+								<?php checked( in_array( $val, $ubicaciones_sel, true ) ); ?>>
+							<?php echo esc_html( $label ); ?>
+						</label>
+					<?php endforeach; ?>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_fecha_inicio"><?php esc_html_e( 'Fecha inicio', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="date" id="scl_anuncio_fecha_inicio" name="scl_anuncio_fecha_inicio"
+					value="<?php echo esc_attr( $fecha_inicio ); ?>"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_fecha_fin"><?php esc_html_e( 'Fecha fin', 'sportcriss-lite' ); ?></label></th>
+				<td><input type="date" id="scl_anuncio_fecha_fin" name="scl_anuncio_fecha_fin"
+					value="<?php echo esc_attr( $fecha_fin ); ?>"></td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_impresiones_limite"><?php esc_html_e( 'Límite de impresiones', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<input type="number" id="scl_anuncio_impresiones_limite" name="scl_anuncio_impresiones_limite"
+						value="<?php echo esc_attr( $imp_limite ); ?>" min="0" class="small-text">
+					<p class="description"><?php esc_html_e( '0 = sin límite', 'sportcriss-lite' ); ?></p>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_estado"><?php esc_html_e( 'Estado', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<select id="scl_anuncio_estado" name="scl_anuncio_estado">
+						<option value="activo"    <?php selected( $estado, 'activo' ); ?>><?php esc_html_e( 'Activo', 'sportcriss-lite' ); ?></option>
+						<option value="pausado"   <?php selected( $estado, 'pausado' ); ?>><?php esc_html_e( 'Pausado', 'sportcriss-lite' ); ?></option>
+						<option value="finalizado" <?php selected( $estado, 'finalizado' ); ?>><?php esc_html_e( 'Finalizado', 'sportcriss-lite' ); ?></option>
+					</select>
+				</td>
+			</tr>
+			<tr>
+				<th><label for="scl_anuncio_peso"><?php esc_html_e( 'Peso (1–10)', 'sportcriss-lite' ); ?></label></th>
+				<td>
+					<input type="number" id="scl_anuncio_peso" name="scl_anuncio_peso"
+						value="<?php echo esc_attr( $peso ); ?>" min="1" max="10" class="small-text">
+					<p class="description"><?php esc_html_e( 'Mayor peso = mayor frecuencia en rotación.', 'sportcriss-lite' ); ?></p>
+				</td>
+			</tr>
+		</table>
+		<?php
+	}
+
+	public function render_anuncio_metricas( $post ) {
+		$imp   = (int) get_post_meta( $post->ID, 'scl_anuncio_impresiones', true );
+		$clics = (int) get_post_meta( $post->ID, 'scl_anuncio_clics',       true );
+		$ctr   = get_post_meta( $post->ID, 'scl_anuncio_ctr', true );
+		$nonce = wp_create_nonce( 'scl_recalcular_metricas' );
+		?>
+		<p>
+			<strong><?php esc_html_e( 'Impresiones:', 'sportcriss-lite' ); ?></strong>
+			<?php echo number_format( $imp ); ?>
+		</p>
+		<p>
+			<strong><?php esc_html_e( 'Clics:', 'sportcriss-lite' ); ?></strong>
+			<?php echo number_format( $clics ); ?>
+		</p>
+		<p>
+			<strong>CTR:</strong>
+			<?php echo esc_html( $ctr ? $ctr . '%' : '0%' ); ?>
+		</p>
+		<hr>
+		<button type="button" class="button" id="scl-recalcular-metricas"
+			data-ad-id="<?php echo esc_attr( $post->ID ); ?>"
+			data-nonce="<?php echo esc_attr( $nonce ); ?>">
+			<?php esc_html_e( 'Recalcular métricas', 'sportcriss-lite' ); ?>
+		</button>
+		<span id="scl-metricas-status" style="margin-left:8px;font-size:0.85em;color:#555;"></span>
+		<script>
+		jQuery(function($) {
+			$('#scl-recalcular-metricas').on('click', function() {
+				var $btn = $(this);
+				$('#scl-metricas-status').text('...');
+				$.post(ajaxurl, {
+					action: 'scl_recalcular_metricas_anuncio',
+					ad_id:  $btn.data('ad-id'),
+					nonce:  $btn.data('nonce'),
+				}, function(res) {
+					if ( res.success ) {
+						$('#scl-metricas-status').text(
+							res.data.impresiones + ' imp · ' + res.data.clics + ' clics · CTR ' + res.data.ctr
+						);
+					} else {
+						$('#scl-metricas-status').text('Error');
+					}
+				});
+			});
+		});
+		</script>
+		<?php
+	}
+
+	// -----------------------------------------------------------------------
+	// Guardado: scl_anunciante
+	// -----------------------------------------------------------------------
+
+	private function guardar_anunciante( $post_id ) {
+		if ( ! isset( $_POST['scl_anunciante_nonce'] ) ) return;
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_anunciante_nonce'] ) ), 'scl_guardar_anunciante' ) ) return;
+		if ( ! current_user_can( 'manage_options' ) ) return;
+
+		update_post_meta( $post_id, 'scl_anunciante_logo',     absint( $_POST['scl_anunciante_logo']     ?? 0 ) );
+		update_post_meta( $post_id, 'scl_anunciante_contacto', sanitize_text_field( wp_unslash( $_POST['scl_anunciante_contacto'] ?? '' ) ) );
+		update_post_meta( $post_id, 'scl_anunciante_email',    sanitize_email( wp_unslash( $_POST['scl_anunciante_email']    ?? '' ) ) );
+		update_post_meta( $post_id, 'scl_anunciante_telefono', sanitize_text_field( wp_unslash( $_POST['scl_anunciante_telefono'] ?? '' ) ) );
+		update_post_meta( $post_id, 'scl_anunciante_web',      esc_url_raw( wp_unslash( $_POST['scl_anunciante_web'] ?? '' ) ) );
+		update_post_meta( $post_id, 'scl_anunciante_notas',    sanitize_textarea_field( wp_unslash( $_POST['scl_anunciante_notas'] ?? '' ) ) );
+
+		$estado = in_array( $_POST['scl_anunciante_estado'] ?? '', [ 'activo', 'inactivo' ], true )
+		          ? $_POST['scl_anunciante_estado'] : 'activo';
+		update_post_meta( $post_id, 'scl_anunciante_estado', $estado );
+	}
+
+	// -----------------------------------------------------------------------
+	// Guardado: scl_anuncio
+	// -----------------------------------------------------------------------
+
+	private function guardar_anuncio( $post_id ) {
+		if ( ! isset( $_POST['scl_anuncio_nonce'] ) ) return;
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_anuncio_nonce'] ) ), 'scl_guardar_anuncio' ) ) return;
+		if ( ! current_user_can( 'manage_options' ) ) return;
+
+		$anunciante_id = absint( $_POST['scl_anuncio_anunciante_id'] ?? 0 );
+		update_post_meta( $post_id, 'scl_anuncio_anunciante_id', $anunciante_id );
+		// Sincronizar post_parent con el anunciante seleccionado
+		if ( $anunciante_id ) {
+			wp_update_post( [ 'ID' => $post_id, 'post_parent' => $anunciante_id ] );
+		}
+
+		update_post_meta( $post_id, 'scl_anuncio_imagen',     absint( $_POST['scl_anuncio_imagen'] ?? 0 ) );
+		update_post_meta( $post_id, 'scl_anuncio_url_destino', esc_url_raw( wp_unslash( $_POST['scl_anuncio_url_destino'] ?? '' ) ) );
+
+		$tipos_validos = [ 'horizontal', 'vertical', 'cuadrado', 'movil' ];
+		$tipo = in_array( $_POST['scl_anuncio_tipo'] ?? '', $tipos_validos, true )
+		        ? $_POST['scl_anuncio_tipo'] : 'cuadrado';
+		update_post_meta( $post_id, 'scl_anuncio_tipo', $tipo );
+
+		$ubs_validas = [ 'header_publico', 'sidebar_tabla', 'entre_partidos', 'footer_publico', 'tabla_posiciones' ];
+		$ubicaciones = isset( $_POST['scl_anuncio_ubicacion'] )
+		               ? array_intersect( (array) $_POST['scl_anuncio_ubicacion'], $ubs_validas )
+		               : [];
+		update_post_meta( $post_id, 'scl_anuncio_ubicacion', array_values( $ubicaciones ) );
+
+		$fecha_inicio = sanitize_text_field( wp_unslash( $_POST['scl_anuncio_fecha_inicio'] ?? '' ) );
+		$fecha_fin    = sanitize_text_field( wp_unslash( $_POST['scl_anuncio_fecha_fin']    ?? '' ) );
+		update_post_meta( $post_id, 'scl_anuncio_fecha_inicio', $fecha_inicio );
+		update_post_meta( $post_id, 'scl_anuncio_fecha_fin',    $fecha_fin );
+
+		update_post_meta( $post_id, 'scl_anuncio_impresiones_limite', absint( $_POST['scl_anuncio_impresiones_limite'] ?? 0 ) );
+		update_post_meta( $post_id, 'scl_anuncio_peso', min( 10, max( 1, absint( $_POST['scl_anuncio_peso'] ?? 5 ) ) ) );
+
+		$estados_validos = [ 'activo', 'pausado', 'finalizado' ];
+		$estado = in_array( $_POST['scl_anuncio_estado'] ?? '', $estados_validos, true )
+		          ? $_POST['scl_anuncio_estado'] : 'activo';
+		update_post_meta( $post_id, 'scl_anuncio_estado', $estado );
+	}
 
 	/**
 	 * Inyecta el JS inline necesario para abrir el Media Uploader nativo de WordPress.

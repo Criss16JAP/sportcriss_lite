@@ -41,6 +41,8 @@ require_once SCL_PATH . 'includes/class-scl-dashboard.php';
 require_once SCL_PATH . 'includes/class-scl-ajax.php';
 require_once SCL_PATH . 'includes/class-scl-public.php';
 require_once SCL_PATH . 'includes/class-scl-export.php';
+require_once SCL_PATH . 'includes/class-scl-ads.php';
+require_once SCL_PATH . 'includes/class-scl-ads-metrics.php';
 
 // ---------------------------------------------------------------------------
 // Hooks de activación y desactivación
@@ -61,6 +63,8 @@ function scl_activar_plugin() {
 	// Rewrite rule para la vista limpia de exportación
 	add_rewrite_rule( '^scl-exportar/?$', 'index.php?scl_exportar=1', 'top' );
 	flush_rewrite_rules();
+	// Tabla de log de publicidad
+	Scl_Ads::crear_tabla_ad_log();
 
 	// Sprint 3: Página del dashboard
 	$pagina = get_page_by_path( 'mi-panel' );
@@ -129,14 +133,22 @@ function scl_run() {
 	$ajax = new Scl_Ajax();
 	$ajax->registrar_handlers( $loader );
 
-	// Vistas públicas
+	// Vistas públicas (shortcodes)
 	$public = new Scl_Public();
-	$loader->add_filter( 'template_include', [ $public, 'filtrar_template' ] );
-	$loader->add_action( 'wp_enqueue_scripts', [ $public, 'encolar_assets' ] );
+	$loader->add_action( 'init', [ $public, 'init' ] );
 
 	// Exportación visual
 	$export = new Scl_Export();
 	$export->init();
+
+	// Módulo de publicidad
+	$ads = new Scl_Ads();
+	$loader->add_action( 'init', [ $ads, 'init' ] );
+
+	// Handler AJAX de exportación de métricas (GET-based, sin nonce de formulario)
+	$loader->add_action( 'wp_ajax_scl_exportar_metricas_anunciante',
+		[ new Scl_Ads_Metrics(), 'exportar_csv_anunciante' ]
+	);
 
 	$loader->run();
 }

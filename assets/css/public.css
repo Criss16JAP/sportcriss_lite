@@ -1,8 +1,309 @@
 /**
  * SportCriss Lite – Estilos de vistas públicas
  *
- * Implementado en Sprint 10.
+ * CSS de componente únicamente. Sin grid de página ni layout global.
+ * Compatible con cualquier tema de WordPress.
  *
  * @package SportCrissLite
  * @since   1.0.0
  */
+
+/* ── Base ──────────────────────────────────────────────── */
+.scl-pub { font-family: inherit; }
+.scl-pub-error { color: #dc3545; font-size: .875rem; }
+.scl-pub-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: #888;
+    font-size: .9rem;
+}
+
+/* ── Tabla de posiciones ───────────────────────────────── */
+.scl-pub-tabla__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .75rem;
+    flex-wrap: wrap;
+    gap: .375rem;
+}
+.scl-pub-tabla__titulo { font-weight: 700; font-size: .95rem; }
+.scl-pub-tabla__grupo {
+    font-size: .75rem;
+    font-weight: 600;
+    background: #f0f4f8;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+.scl-pub-tabla__wrap { overflow-x: auto; }
+.scl-pub-tabla__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .875rem;
+}
+.scl-pub-tabla__table thead th {
+    padding: 8px 6px;
+    text-align: center;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #555;
+    border-bottom: 2px solid #e8ecef;
+    white-space: nowrap;
+}
+.scl-pub-col-equipo { text-align: left !important; }
+.scl-pub-col-pos    { width: 32px; }
+.scl-pub-col-escudo { width: 36px; }
+.scl-pub-tabla__table tbody td {
+    padding: 8px 6px;
+    text-align: center;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+.scl-pub-tabla__fila:hover td { background: #f8f9fa; }
+.scl-pub-tabla__fila--lider td { background: #fffbf0; }
+.scl-pub-col-pts strong { font-weight: 800; font-size: 1rem; }
+.scl-pub-tabla__footer { margin-top: .5rem; }
+.scl-pub-tabla__footer small { font-size: .7rem; color: #aaa; }
+
+/* ── Escudos ───────────────────────────────────────────── */
+.scl-pub-escudo {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: contain;
+    vertical-align: middle;
+}
+.scl-pub-escudo--placeholder {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e8ecef;
+    font-weight: 700;
+    font-size: .75rem;
+    color: #555;
+}
+
+/* ── Resultados y Próximos ─────────────────────────────── */
+.scl-pub-resultados,
+.scl-pub-proximos { display: flex; flex-direction: column; gap: .5rem; }
+
+.scl-pub-resultado,
+.scl-pub-proximo {
+    padding: .75rem 1rem;
+    border: 1px solid #e8ecef;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.scl-pub-resultado__meta {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    margin-bottom: .5rem;
+    font-size: .75rem;
+    color: #888;
+    flex-wrap: wrap;
+}
+.scl-pub-resultado__marcador {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}
+.scl-pub-resultado__equipo {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex: 1;
+    min-width: 0;
+}
+.scl-pub-resultado__equipo--visita { flex-direction: row-reverse; }
+.scl-pub-nombre {
+    font-weight: 600;
+    font-size: .9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.scl-pub-resultado__score {
+    display: flex;
+    align-items: center;
+    gap: .375rem;
+    flex-shrink: 0;
+}
+.scl-pub-goles {
+    font-size: 1.25rem;
+    font-weight: 800;
+    min-width: 24px;
+    text-align: center;
+}
+.scl-pub-vs {
+    font-size: .875rem;
+    font-weight: 700;
+    color: #aaa;
+    padding: 0 .25rem;
+}
+.scl-pub-guion  { color: #ccc; font-weight: 400; }
+.scl-pub-penales {
+    text-align: center;
+    font-size: .75rem;
+    color: #888;
+    margin-top: 4px;
+}
+.scl-pub-badge {
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: .7rem;
+    font-weight: 600;
+}
+.scl-pub-badge--playoff { background: #e2d9f3; color: #4a235a; }
+
+/* ── Perfil de equipo ──────────────────────────────────── */
+.scl-pub-equipo__header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.scl-pub-equipo__escudo {
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    border-radius: 8px;
+    flex-shrink: 0;
+}
+.scl-pub-equipo__escudo--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    background: #e8ecef;
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: #555;
+    flex-shrink: 0;
+}
+.scl-pub-equipo__nombre {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 .25rem;
+}
+.scl-pub-equipo__zona {
+    font-size: .8125rem;
+    color: #888;
+}
+.scl-pub-equipo__stats {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+}
+.scl-pub-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .125rem;
+    background: #f8f9fa;
+    border: 1px solid #e8ecef;
+    border-radius: 8px;
+    padding: .625rem .75rem;
+    min-width: 52px;
+}
+.scl-pub-stat__valor { font-size: 1.1rem; font-weight: 800; }
+.scl-pub-stat__label {
+    font-size: .65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #888;
+}
+.scl-pub-equipo__torneos-titulo {
+    font-size: .9rem;
+    font-weight: 700;
+    margin: 0 0 .625rem;
+}
+.scl-pub-equipo__torneos-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+}
+.scl-pub-equipo__torneo-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .875rem;
+}
+.scl-pub-equipo__torneo-logo {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    border-radius: 3px;
+}
+
+/* ── Directorio de torneos ─────────────────────────────── */
+.scl-pub-torneos-grid {
+    display: grid;
+    grid-template-columns: repeat( auto-fill, minmax( 180px, 1fr ) );
+    gap: 1rem;
+}
+.scl-pub-torneo-card {
+    border: 1px solid #e8ecef;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    background: #fff;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow .15s;
+    display: block;
+}
+.scl-pub-torneo-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.scl-pub-torneo-card img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+    margin-bottom: .5rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+.scl-pub-torneo-card__placeholder {
+    width: 60px;
+    height: 60px;
+    background: #e8ecef;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 1rem;
+    color: #555;
+    margin: 0 auto .5rem;
+}
+.scl-pub-torneo-card__nombre { font-weight: 700; font-size: .9rem; }
+
+/* ── Anuncios ──────────────────────────────────────────── */
+.scl-ad { display: block; margin: 0 auto; }
+.scl-ad__link { display: block; line-height: 0; }
+.scl-ad__img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 4px;
+    transition: opacity .2s;
+}
+.scl-ad__img:hover { opacity: .9; }
+.scl-ad--horizontal { max-width: 728px; }
+.scl-ad--vertical   { max-width: 160px; }
+.scl-ad--cuadrado   { max-width: 300px; }
+.scl-ad--movil      { max-width: 320px; }
