@@ -265,8 +265,8 @@ class Scl_Ajax {
 		if ( ! in_array( $file['type'], $tipos_permitidos, true ) ) {
 			wp_send_json_error( 'Tipo de archivo no permitido.' );
 		}
-		if ( $file['size'] > 2 * 1024 * 1024 ) {
-			wp_send_json_error( 'El archivo supera 2MB.' );
+		if ( $file['size'] > 5 * 1024 * 1024 ) {
+			wp_send_json_error( 'El archivo supera 5MB.' );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/file.php';
@@ -548,8 +548,8 @@ class Scl_Ajax {
 			wp_send_json_error( 'No se ha subido ningún archivo.' );
 		}
 
-		if ( (int) $_FILES['escudo']['size'] > 2 * 1024 * 1024 ) {
-			wp_send_json_error( 'El escudo no puede superar 2MB.' );
+		if ( (int) $_FILES['escudo']['size'] > 5 * 1024 * 1024 ) {
+			wp_send_json_error( 'El escudo no puede superar 5MB.' );
 		}
 
 		$tipo       = wp_check_filetype( $_FILES['escudo']['name'] );

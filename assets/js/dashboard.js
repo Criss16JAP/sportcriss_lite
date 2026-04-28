@@ -54,15 +54,24 @@ window.scl_sync_color = function(tipo, valor) {
 
 // ── Uploader con barra de progreso (formulario de torneo) ──────
 window.scl_init_form_uploader = function(fileInputId, contentId, progressId, hiddenId) {
-	var fileInput = document.getElementById(fileInputId);
-	if (!fileInput) return;
+	var fileInput  = document.getElementById(fileInputId);
+	var contentEl  = document.getElementById(contentId);
+	if (!fileInput || !contentEl) return;
+
+	// El div visual actúa como trigger; el input está fuera del div con display:none
+	var dropzone = contentEl.parentElement;
+	if (dropzone) {
+		dropzone.addEventListener('click', function() {
+			fileInput.click();
+		});
+	}
 
 	fileInput.addEventListener('change', function() {
 		var file = this.files[0];
 		if (!file) return;
 
-		if (file.size > 2 * 1024 * 1024) {
-			scl_flash('La imagen no puede superar 2MB.', 'error');
+		if (file.size > 5 * 1024 * 1024) {
+			scl_flash('La imagen no puede superar 5MB.', 'error');
 			return;
 		}
 
@@ -73,6 +82,8 @@ window.scl_init_form_uploader = function(fileInputId, contentId, progressId, hid
 
 		var xhr = new XMLHttpRequest();
 		xhr.open('POST', scl_ajax.url);
+
+		contentEl.innerHTML = '<div class="scl-upload-loading">&#9203; Subiendo imagen...</div>';
 
 		xhr.upload.onprogress = function(e) {
 			if (e.lengthComputable) {
@@ -86,16 +97,18 @@ window.scl_init_form_uploader = function(fileInputId, contentId, progressId, hid
 			try { res = JSON.parse(xhr.responseText); } catch(e) { res = { success: false }; }
 			if (res.success) {
 				document.getElementById(hiddenId).value = res.data.attachment_id;
-				document.getElementById(contentId).innerHTML =
+				contentEl.innerHTML =
 					'<img src="' + res.data.url + '" class="scl-file-uploader__preview" alt="">'
 					+ '<p class="scl-file-uploader__text"><small>Haz clic para cambiar</small></p>';
 			} else {
+				contentEl.innerHTML = '<div class="scl-upload-loading">&#10060; Error. Intenta de nuevo.</div>';
 				scl_flash(res.data || 'Error al subir la imagen.', 'error');
 			}
 			document.getElementById(progressId).style.width = '0';
 		};
 
 		xhr.onerror = function() {
+			contentEl.innerHTML = '<div class="scl-upload-loading">&#10060; Error de conexión. Intenta de nuevo.</div>';
 			scl_flash('Error de conexión al subir.', 'error');
 			document.getElementById(progressId).style.width = '0';
 		};
@@ -455,8 +468,8 @@ jQuery(document).ready(function($) {
 		var file = this.files[0];
 		if (!file) return;
 
-		if (file.size > 2 * 1024 * 1024) {
-			scl_flash('El escudo no puede superar 2MB.', 'error');
+		if (file.size > 5 * 1024 * 1024) {
+			scl_flash('El escudo no puede superar 5MB.', 'error');
 			$(this).val('');
 			return;
 		}

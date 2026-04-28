@@ -94,7 +94,6 @@ $fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' )
 		<div class="scl-field" style="max-width:360px">
 			<label>Logo del torneo</label>
 			<div class="scl-file-uploader" id="scl_logo_dropzone">
-				<input type="file" id="scl_logo_file" accept="image/jpeg,image/png,image/webp,image/svg+xml">
 				<div id="scl_logo_content">
 					<?php if ( $logo_url ) : ?>
 						<img src="<?php echo esc_url( $logo_url ); ?>"
@@ -104,7 +103,7 @@ $fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' )
 						<div class="scl-file-uploader__icon">&#128444;</div>
 						<p class="scl-file-uploader__text">
 							Haz clic o arrastra tu logo aquí<br>
-							<small>JPG, PNG, WebP o SVG &middot; Máx. 2MB</small>
+							<small>JPG, PNG, WebP o SVG &middot; Máx. 5MB</small>
 						</p>
 					<?php endif; ?>
 				</div>
@@ -112,6 +111,7 @@ $fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' )
 					<div class="scl-file-uploader__progress-bar" id="scl_logo_progress"></div>
 				</div>
 			</div>
+			<input type="file" id="scl_logo_file" accept="image/jpeg,image/png,image/webp,image/svg+xml" style="display:none">
 			<input type="hidden" id="scl_logo_id" value="<?php echo esc_attr( $logo_id ); ?>">
 		</div>
 	</div>
@@ -197,7 +197,6 @@ $fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' )
 		<div class="scl-field" style="max-width:360px; margin-top:1rem">
 			<label>Imagen de fondo</label>
 			<div class="scl-file-uploader" id="scl_fondo_dropzone">
-				<input type="file" id="scl_fondo_file" accept="image/jpeg,image/png,image/webp">
 				<div id="scl_fondo_content">
 					<?php if ( $fondo_url ) : ?>
 						<img src="<?php echo esc_url( $fondo_url ); ?>"
@@ -207,7 +206,7 @@ $fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' )
 						<div class="scl-file-uploader__icon">&#128247;</div>
 						<p class="scl-file-uploader__text">
 							Haz clic o arrastra tu imagen de fondo<br>
-							<small>JPG, PNG o WebP &middot; Máx. 2MB</small>
+							<small>JPG, PNG o WebP &middot; Máx. 5MB</small>
 						</p>
 					<?php endif; ?>
 				</div>
@@ -215,6 +214,7 @@ $fondo_url = $fondo_id ? ( wp_get_attachment_image_url( $fondo_id, 'thumbnail' )
 					<div class="scl-file-uploader__progress-bar" id="scl_fondo_progress"></div>
 				</div>
 			</div>
+			<input type="file" id="scl_fondo_file" accept="image/jpeg,image/png,image/webp" style="display:none">
 			<input type="hidden" id="scl_fondo_id" value="<?php echo esc_attr( $fondo_id ); ?>">
 		</div>
 	</div>

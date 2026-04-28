@@ -36,7 +36,7 @@ class Scl_Dashboard {
 		}
 
 		wp_enqueue_style( 'scl-dashboard-css', SCL_URL . 'assets/css/dashboard.css', [], SCL_VERSION );
-		wp_enqueue_script( 'scl-dashboard-js', SCL_URL . 'assets/js/dashboard.js', [ 'jquery' ], SCL_VERSION, true );
+		wp_enqueue_script( 'scl-dashboard-js', SCL_URL . 'assets/js/dashboard.js', [ 'jquery', 'jquery-ui-sortable' ], SCL_VERSION, true );
 
 		wp_localize_script( 'scl-dashboard-js', 'scl_ajax', [
 			'url'   => admin_url( 'admin-ajax.php' ),
