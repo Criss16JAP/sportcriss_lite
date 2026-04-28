@@ -57,6 +57,11 @@ class Scl_Dashboard {
 	}
 
 	public function render(): string {
+		// No redirigir en contexto de edición (Elementor, et_fb, wp-admin)
+		if ( is_admin() || wp_is_json_request() ) return '';
+		if ( isset( $_GET['elementor-preview'] ) || isset( $_GET['et_fb'] ) ) return '';
+		if ( defined( 'ELEMENTOR_VERSION' ) && \Elementor\Plugin::$instance->editor->is_edit_mode() ) return '';
+
 		if ( ! is_user_logged_in() ) {
 			wp_safe_redirect( home_url( '/acceso/' ) );
 			exit;
@@ -118,7 +123,7 @@ class Scl_Dashboard {
 		if ( file_exists( $path ) ) {
 			include $path;
 		} else {
-			echo '<p>' . esc_html__( 'Vista no encontrada.', 'sportcriss-lite' ) . '</p>';
+			echo '<div class="scl-empty"><p>' . esc_html__( 'Template no encontrado: ', 'sportcriss-lite' ) . esc_html( $template ) . '</p></div>';
 		}
 	}
 
