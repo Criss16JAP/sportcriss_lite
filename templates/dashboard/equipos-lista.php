@@ -14,7 +14,7 @@ $filtro   = sanitize_key( $_GET['filtro'] ?? 'todos' );
 
 $args = [
 	'post_type'      => 'scl_equipo',
-	'author'         => get_current_user_id(),
+	'author'         => scl_get_autor_efectivo(),
 	'post_status'    => 'publish',
 	'posts_per_page' => -1,
 	'orderby'        => 'title',
@@ -32,7 +32,7 @@ $equipos = get_posts( $args );
 // Contar incompletos siempre, para el banner, independiente del filtro activo
 $num_incompletos = count( get_posts( [
 	'post_type'      => 'scl_equipo',
-	'author'         => get_current_user_id(),
+	'author'         => scl_get_autor_efectivo(),
 	'post_status'    => 'publish',
 	'posts_per_page' => -1,
 	'fields'         => 'ids',

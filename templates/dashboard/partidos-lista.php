@@ -85,6 +85,7 @@ if ( ! empty( $mis_torneo_ids ) || $torneo_filtro ) {
 
 	$partidos = get_posts( [
 		'post_type'      => 'scl_partido',
+		'author'         => $autor_ef,
 		'post_status'    => 'publish',
 		'posts_per_page' => -1,
 		'meta_query'     => $meta_query,

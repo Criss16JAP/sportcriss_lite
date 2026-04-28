@@ -142,6 +142,13 @@ class Scl_Ajax {
 			wp_send_json_error( 'torneo_id requerido' );
 		}
 
+		$torneo = get_post( $torneo_id );
+		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
+			|| ( (int) $torneo->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) )
+		) {
+			wp_send_json_error( 'Torneo no válido o sin permisos.' );
+		}
+
 		// Buscar grupos cuyo post_parent sea el torneo
 		$grupos = get_posts( [
 			'post_type'      => 'scl_grupo',
@@ -1348,6 +1355,7 @@ class Scl_Ajax {
 
 		$partidos = get_posts( [
 			'post_type'      => 'scl_partido',
+			'author'         => scl_get_autor_efectivo(),
 			'post_status'    => 'publish',
 			'posts_per_page' => -1,
 			'meta_query'     => $meta_query,

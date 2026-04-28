@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 $torneos = get_posts( [
 	'post_type'      => 'scl_torneo',
-	'author'         => $usuario->ID,
+	'author'         => scl_get_autor_efectivo(),
 	'post_status'    => 'publish',
 	'posts_per_page' => -1,
 	'orderby'        => 'title',
