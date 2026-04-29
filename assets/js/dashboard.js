@@ -1107,3 +1107,20 @@ jQuery(document).ready(function($) {
 		debounce_timer = setTimeout(scl_actualizar_preview, 400);
 	});
 })(jQuery);
+
+// ── Temporadas: cambio de estado activa/finalizada ────────────────────────
+window.scl_cambiar_estado_temporada = function(term_id, nuevo_estado) {
+	jQuery.post(scl_ajax.url, {
+		action:       'scl_cambiar_estado_temporada',
+		nonce:        scl_ajax.nonce,
+		term_id:      term_id,
+		nuevo_estado: nuevo_estado,
+	}, function(res) {
+		if (res.success) {
+			sessionStorage.setItem('scl_flash', 'Estado de temporada actualizado.');
+			window.location.reload();
+		} else {
+			scl_flash(res.data || 'Error al actualizar el estado.', 'error');
+		}
+	});
+};

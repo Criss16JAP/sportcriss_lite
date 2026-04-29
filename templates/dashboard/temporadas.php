@@ -69,11 +69,11 @@ $temporadas = get_terms( [
 					<td><strong><?php echo esc_html( $temp->name ); ?></strong></td>
 					<td><?php echo esc_html( $anio ); ?></td>
 					<td>
-						<?php if ( 'activa' === $estado ) : ?>
-							<span class="scl-badge scl-badge--success">ACTIVA</span>
-						<?php else : ?>
-							<span class="scl-badge scl-badge--secondary">FINALIZADA</span>
-						<?php endif; ?>
+						<button type="button"
+						        class="scl-btn scl-btn--sm <?php echo 'activa' === $estado ? 'scl-btn--outline' : 'scl-btn--ghost'; ?>"
+						        onclick="scl_cambiar_estado_temporada(<?php echo esc_attr( $temp->term_id ); ?>, '<?php echo 'activa' === $estado ? 'finalizada' : 'activa'; ?>')">
+							<?php echo 'activa' === $estado ? esc_html__( '→ Marcar finalizada', 'sportcriss-lite' ) : esc_html__( '→ Reactivar', 'sportcriss-lite' ); ?>
+						</button>
 					</td>
 				</tr>
 			<?php endforeach; ?>

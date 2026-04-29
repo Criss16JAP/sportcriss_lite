@@ -54,6 +54,15 @@ require_once SCL_PATH . 'includes/class-scl-stats.php';
 register_activation_hook( __FILE__, 'scl_activar_plugin' );
 register_deactivation_hook( __FILE__, 'scl_desactivar_plugin' );
 
+// Rutina de upgrade: crea tablas faltantes sin necesitar desactivar/reactivar.
+add_action( 'plugins_loaded', function() {
+	$version_guardada = get_option( 'scl_db_version', '0' );
+	if ( version_compare( $version_guardada, SCL_VERSION, '<' ) ) {
+		scl_crear_tablas_stats();
+		update_option( 'scl_db_version', SCL_VERSION );
+	}
+} );
+
 /**
  * Crea (o actualiza) las tablas de estadísticas individuales.
  * Seguro de llamar múltiples veces via dbDelta().

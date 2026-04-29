@@ -72,6 +72,8 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_desinscribir_jugador',      [ $this, 'ajax_desinscribir_jugador' ] );
 		$loader->add_action( 'wp_ajax_scl_get_jugadores_partido',     [ $this, 'ajax_get_jugadores_partido' ] );
 		$loader->add_action( 'wp_ajax_scl_guardar_estadisticas_partido', [ $this, 'ajax_guardar_estadisticas_partido' ] );
+		// Temporadas: cambiar estado activa/finalizada desde el dashboard frontend
+		$loader->add_action( 'wp_ajax_scl_cambiar_estado_temporada', [ $this, 'ajax_cambiar_estado_temporada' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -1762,5 +1764,38 @@ class Scl_Ajax {
 		return current_user_can( 'manage_options' )
 			|| current_user_can( 'scl_organizador' )
 			|| current_user_can( 'scl_colaborador' );
+	}
+
+	// -----------------------------------------------------------------------
+	// Temporadas: cambiar estado desde el dashboard frontend
+	// -----------------------------------------------------------------------
+
+	public function ajax_cambiar_estado_temporada(): void {
+		$this->verificar_permisos();
+		if ( scl_es_colaborador() ) {
+			wp_send_json_error( 'Los colaboradores no pueden modificar temporadas.' );
+		}
+
+		$term_id    = absint( $_POST['term_id'] ?? 0 );
+		$nuevo_estado = sanitize_key( wp_unslash( $_POST['nuevo_estado'] ?? '' ) );
+
+		if ( ! $term_id ) {
+			wp_send_json_error( 'ID de temporada inválido.' );
+		}
+		if ( ! in_array( $nuevo_estado, [ 'activa', 'finalizada' ], true ) ) {
+			wp_send_json_error( 'Estado inválido.' );
+		}
+
+		$term = get_term( $term_id, 'scl_temporada' );
+		if ( ! $term || is_wp_error( $term ) ) {
+			wp_send_json_error( 'Temporada no encontrada.' );
+		}
+
+		update_term_meta( $term_id, 'scl_temporada_estado', $nuevo_estado );
+
+		wp_send_json_success( [
+			'nuevo_estado' => $nuevo_estado,
+			'label'        => 'activa' === $nuevo_estado ? __( 'Activa', 'sportcriss-lite' ) : __( 'Finalizada', 'sportcriss-lite' ),
+		] );
 	}
 }
