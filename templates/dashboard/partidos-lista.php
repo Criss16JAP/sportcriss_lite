@@ -327,6 +327,13 @@ $datos_drawer = [
 				</a>
 				<?php endif; ?>
 
+				<?php if ( 'finalizado' === $estado ) : ?>
+				<a href="<?php echo esc_url( add_query_arg( [ 'scl_ruta' => 'estadisticas_partido', 'scl_id' => $partido->ID ], $home_url ) ); ?>"
+				   class="scl-btn scl-btn--outline scl-btn--sm">
+					&#11088; <?php esc_html_e( 'Estadísticas', 'sportcriss-lite' ); ?>
+				</a>
+				<?php endif; ?>
+
 				<button type="button"
 				        class="scl-btn scl-btn--outline scl-btn--sm scl-partido-editar-btn"
 				        data-partido="<?php echo esc_attr( $partido_data ); ?>">

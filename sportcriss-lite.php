@@ -46,12 +46,66 @@ require_once SCL_PATH . 'includes/class-scl-export.php';
 require_once SCL_PATH . 'includes/class-scl-ads.php';
 require_once SCL_PATH . 'includes/class-scl-ads-metrics.php';
 require_once SCL_PATH . 'includes/class-scl-admin-columns.php';
+require_once SCL_PATH . 'includes/class-scl-stats.php';
 
 // ---------------------------------------------------------------------------
 // Hooks de activación y desactivación
 // ---------------------------------------------------------------------------
 register_activation_hook( __FILE__, 'scl_activar_plugin' );
 register_deactivation_hook( __FILE__, 'scl_desactivar_plugin' );
+
+/**
+ * Crea (o actualiza) las tablas de estadísticas individuales.
+ * Seguro de llamar múltiples veces via dbDelta().
+ */
+function scl_crear_tablas_stats() {
+	global $wpdb;
+	$charset_collate = $wpdb->get_charset_collate();
+
+	// Tabla de inscripciones: vincula jugador ↔ equipo ↔ torneo ↔ temporada
+	$sql_inscripciones = "CREATE TABLE {$wpdb->prefix}scl_inscripciones (
+		id            BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+		jugador_id    BIGINT(20) UNSIGNED NOT NULL,
+		equipo_id     BIGINT(20) UNSIGNED NOT NULL,
+		torneo_id     BIGINT(20) UNSIGNED NOT NULL,
+		temporada_term_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+		organizador_id    BIGINT(20) UNSIGNED NOT NULL,
+		activo        TINYINT(1) NOT NULL DEFAULT 1,
+		created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (id),
+		UNIQUE KEY inscripcion_activa (jugador_id, torneo_id, temporada_term_id),
+		KEY equipo_torneo (equipo_id, torneo_id),
+		KEY organizador_id (organizador_id)
+	) $charset_collate;";
+
+	// Tabla de estadísticas: una fila por jugador por partido
+	$sql_estadisticas = "CREATE TABLE {$wpdb->prefix}scl_estadisticas (
+		id               BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+		partido_id       BIGINT(20) UNSIGNED NOT NULL,
+		inscripcion_id   BIGINT(20) UNSIGNED NOT NULL,
+		jugador_id       BIGINT(20) UNSIGNED NOT NULL,
+		equipo_id        BIGINT(20) UNSIGNED NOT NULL,
+		torneo_id        BIGINT(20) UNSIGNED NOT NULL,
+		temporada_term_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+		organizador_id   BIGINT(20) UNSIGNED NOT NULL,
+		goles            TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+		asistencias      TINYINT(3) UNSIGNED NOT NULL DEFAULT 0,
+		tarjeta_amarilla TINYINT(1) NOT NULL DEFAULT 0,
+		tarjeta_roja     TINYINT(1) NOT NULL DEFAULT 0,
+		calificacion     DECIMAL(3,1) DEFAULT NULL,
+		es_penales       TINYINT(1) NOT NULL DEFAULT 0,
+		created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (id),
+		UNIQUE KEY partido_jugador (partido_id, jugador_id),
+		KEY jugador_torneo (jugador_id, torneo_id),
+		KEY torneo_temporada (torneo_id, temporada_term_id),
+		KEY organizador_id (organizador_id)
+	) $charset_collate;";
+
+	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+	dbDelta( $sql_inscripciones );
+	dbDelta( $sql_estadisticas );
+}
 
 /**
  * Rutina de activación:
@@ -68,6 +122,9 @@ function scl_activar_plugin() {
 	flush_rewrite_rules();
 	// Tabla de log de publicidad
 	Scl_Ads::crear_tabla_ad_log();
+
+	// Tablas de estadísticas individuales
+	scl_crear_tablas_stats();
 
 	// Sprint 3: Página del dashboard
 	$pagina = get_page_by_path( 'mi-panel' );

@@ -56,8 +56,14 @@ class Scl_Public {
 		add_shortcode( 'scl_resultados',       [ $this, 'shortcode_resultados' ] );
 		add_shortcode( 'scl_proximos',         [ $this, 'shortcode_proximos' ] );
 		add_shortcode( 'scl_perfil_equipo',    [ $this, 'shortcode_equipo'   ] );
-		add_shortcode( 'scl_torneos',          [ $this, 'shortcode_torneos'  ] );
-		add_action( 'wp_enqueue_scripts',      [ $this, 'enqueue_assets'     ] );
+		add_shortcode( 'scl_torneos',              [ $this, 'shortcode_torneos'    ] );
+		add_shortcode( 'scl_goleadores',           [ $this, 'shortcode_goleadores' ] );
+		add_shortcode( 'scl_asistencias',          [ $this, 'shortcode_asistencias' ] );
+		add_shortcode( 'scl_tarjetas',             [ $this, 'shortcode_tarjetas'   ] );
+		add_shortcode( 'scl_calificaciones',       [ $this, 'shortcode_calificaciones' ] );
+		add_shortcode( 'scl_valla_menos_vencida',  [ $this, 'shortcode_valla'      ] );
+		add_shortcode( 'scl_perfil_jugador',       [ $this, 'shortcode_perfil_jugador' ] );
+		add_action( 'wp_enqueue_scripts',          [ $this, 'enqueue_assets'       ] );
 	}
 
 	/**
@@ -377,6 +383,334 @@ class Scl_Public {
 
 		ob_start();
 		include SCL_PATH . 'templates/public/directorio-torneos.php';
+		return ob_get_clean();
+	}
+
+	// -----------------------------------------------------------------------
+	// Shortcodes de estadísticas individuales
+	// -----------------------------------------------------------------------
+
+	/**
+	 * [scl_goleadores torneo_id="" temporada="" limite="10"]
+	 */
+	public function shortcode_goleadores( array $atts ): string {
+		$atts = shortcode_atts( [
+			'torneo_id'   => 0,
+			'temporada'   => '',
+			'limite'      => 10,
+		], $atts, 'scl_goleadores' );
+
+		$torneo_id        = absint( $atts['torneo_id'] );
+		$temporada_term_id = $atts['temporada'] ? absint( $atts['temporada'] ) : 0;
+		$limite           = absint( $atts['limite'] );
+
+		if ( ! $torneo_id ) return '';
+
+		$goleadores = Scl_Stats::get_goleadores( $torneo_id, $temporada_term_id, $limite );
+		if ( empty( $goleadores ) ) {
+			return '<div class="scl-pub-empty">No hay estadísticas de goles disponibles.</div>';
+		}
+
+		ob_start();
+		?>
+		<div class="scl-pub-stats-table">
+			<table>
+				<thead><tr>
+					<th>#</th>
+					<th><?php esc_html_e( 'Jugador', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+					<th>&#9917; <?php esc_html_e( 'Goles', 'sportcriss-lite' ); ?></th>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $goleadores as $i => $g ) : ?>
+						<tr>
+							<td><?php echo esc_html( $i + 1 ); ?></td>
+							<td><?php echo esc_html( $g->jugador_nombre ); ?></td>
+							<td><?php echo esc_html( $g->equipo_nombre ); ?></td>
+							<td><strong><?php echo esc_html( $g->goles ); ?></strong></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * [scl_asistencias torneo_id="" temporada="" limite="10"]
+	 */
+	public function shortcode_asistencias( array $atts ): string {
+		$atts = shortcode_atts( [
+			'torneo_id'   => 0,
+			'temporada'   => '',
+			'limite'      => 10,
+		], $atts, 'scl_asistencias' );
+
+		$torneo_id        = absint( $atts['torneo_id'] );
+		$temporada_term_id = $atts['temporada'] ? absint( $atts['temporada'] ) : 0;
+		$limite           = absint( $atts['limite'] );
+
+		if ( ! $torneo_id ) return '';
+
+		$datos = Scl_Stats::get_asistencias( $torneo_id, $temporada_term_id, $limite );
+		if ( empty( $datos ) ) {
+			return '<div class="scl-pub-empty">No hay estadísticas de asistencias disponibles.</div>';
+		}
+
+		ob_start();
+		?>
+		<div class="scl-pub-stats-table">
+			<table>
+				<thead><tr>
+					<th>#</th>
+					<th><?php esc_html_e( 'Jugador', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+					<th>&#128203; <?php esc_html_e( 'Asistencias', 'sportcriss-lite' ); ?></th>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $datos as $i => $d ) : ?>
+						<tr>
+							<td><?php echo esc_html( $i + 1 ); ?></td>
+							<td><?php echo esc_html( $d->jugador_nombre ); ?></td>
+							<td><?php echo esc_html( $d->equipo_nombre ); ?></td>
+							<td><strong><?php echo esc_html( $d->asistencias ); ?></strong></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * [scl_tarjetas torneo_id="" temporada="" tipo="ambas" limite="10"]
+	 * tipo: amarilla | roja | ambas
+	 */
+	public function shortcode_tarjetas( array $atts ): string {
+		$atts = shortcode_atts( [
+			'torneo_id'   => 0,
+			'temporada'   => '',
+			'tipo'        => 'ambas',
+			'limite'      => 10,
+		], $atts, 'scl_tarjetas' );
+
+		$torneo_id        = absint( $atts['torneo_id'] );
+		$temporada_term_id = $atts['temporada'] ? absint( $atts['temporada'] ) : 0;
+		$tipo             = in_array( $atts['tipo'], [ 'amarilla', 'roja', 'ambas' ], true ) ? $atts['tipo'] : 'ambas';
+		$limite           = absint( $atts['limite'] );
+
+		if ( ! $torneo_id ) return '';
+
+		$datos = Scl_Stats::get_tarjetas( $torneo_id, $temporada_term_id, $tipo, $limite );
+		if ( empty( $datos ) ) {
+			return '<div class="scl-pub-empty">No hay estadísticas de tarjetas disponibles.</div>';
+		}
+
+		ob_start();
+		?>
+		<div class="scl-pub-stats-table">
+			<table>
+				<thead><tr>
+					<th>#</th>
+					<th><?php esc_html_e( 'Jugador', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+					<?php if ( 'roja' !== $tipo ) : ?>
+						<th>&#129000; <?php esc_html_e( 'Amarillas', 'sportcriss-lite' ); ?></th>
+					<?php endif; ?>
+					<?php if ( 'amarilla' !== $tipo ) : ?>
+						<th>&#128998; <?php esc_html_e( 'Rojas', 'sportcriss-lite' ); ?></th>
+					<?php endif; ?>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $datos as $i => $d ) : ?>
+						<tr>
+							<td><?php echo esc_html( $i + 1 ); ?></td>
+							<td><?php echo esc_html( $d->jugador_nombre ); ?></td>
+							<td><?php echo esc_html( $d->equipo_nombre ); ?></td>
+							<?php if ( 'roja' !== $tipo ) : ?>
+								<td><?php echo esc_html( $d->amarillas ); ?></td>
+							<?php endif; ?>
+							<?php if ( 'amarilla' !== $tipo ) : ?>
+								<td><strong><?php echo esc_html( $d->rojas ); ?></strong></td>
+							<?php endif; ?>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * [scl_calificaciones torneo_id="" temporada="" minimo_partidos="3" limite="10"]
+	 */
+	public function shortcode_calificaciones( array $atts ): string {
+		$atts = shortcode_atts( [
+			'torneo_id'        => 0,
+			'temporada'        => '',
+			'minimo_partidos'  => 3,
+			'limite'           => 10,
+		], $atts, 'scl_calificaciones' );
+
+		$torneo_id        = absint( $atts['torneo_id'] );
+		$temporada_term_id = $atts['temporada'] ? absint( $atts['temporada'] ) : 0;
+		$minimo           = absint( $atts['minimo_partidos'] );
+		$limite           = absint( $atts['limite'] );
+
+		if ( ! $torneo_id ) return '';
+
+		$datos = Scl_Stats::get_calificaciones( $torneo_id, $temporada_term_id, $minimo, $limite );
+		if ( empty( $datos ) ) {
+			return '<div class="scl-pub-empty">No hay calificaciones disponibles.</div>';
+		}
+
+		ob_start();
+		?>
+		<div class="scl-pub-stats-table">
+			<table>
+				<thead><tr>
+					<th>#</th>
+					<th><?php esc_html_e( 'Jugador', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+					<th>&#11088; <?php esc_html_e( 'Promedio', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></th>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $datos as $i => $d ) : ?>
+						<tr>
+							<td><?php echo esc_html( $i + 1 ); ?></td>
+							<td><?php echo esc_html( $d->jugador_nombre ); ?></td>
+							<td><?php echo esc_html( $d->equipo_nombre ); ?></td>
+							<td><strong><?php echo esc_html( number_format( (float) $d->promedio, 1 ) ); ?></strong></td>
+							<td><?php echo esc_html( $d->partidos ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * [scl_valla_menos_vencida torneo_id="" temporada="" limite="10"]
+	 */
+	public function shortcode_valla( array $atts ): string {
+		$atts = shortcode_atts( [
+			'torneo_id'   => 0,
+			'temporada'   => '',
+			'limite'      => 10,
+		], $atts, 'scl_valla_menos_vencida' );
+
+		$torneo_id        = absint( $atts['torneo_id'] );
+		$temporada_term_id = $atts['temporada'] ? absint( $atts['temporada'] ) : 0;
+		$limite           = absint( $atts['limite'] );
+
+		if ( ! $torneo_id ) return '';
+
+		$datos = Scl_Stats::get_valla_menos_vencida( $torneo_id, $temporada_term_id, $limite );
+		if ( empty( $datos ) ) {
+			return '<div class="scl-pub-empty">No hay datos de valla disponibles.</div>';
+		}
+
+		ob_start();
+		?>
+		<div class="scl-pub-stats-table">
+			<table>
+				<thead><tr>
+					<th>#</th>
+					<th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Goles en contra', 'sportcriss-lite' ); ?></th>
+					<th><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></th>
+				</tr></thead>
+				<tbody>
+					<?php foreach ( $datos as $i => $d ) : ?>
+						<tr>
+							<td><?php echo esc_html( $i + 1 ); ?></td>
+							<td><?php echo esc_html( $d->equipo_nombre ); ?></td>
+							<td><strong><?php echo esc_html( $d->goles_en_contra ); ?></strong></td>
+							<td><?php echo esc_html( $d->partidos ); ?></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<?php
+		return ob_get_clean();
+	}
+
+	/**
+	 * [scl_perfil_jugador jugador_id="" torneo_id="" temporada=""]
+	 */
+	public function shortcode_perfil_jugador( array $atts ): string {
+		$atts = shortcode_atts( [
+			'jugador_id'  => 0,
+			'torneo_id'   => 0,
+			'temporada'   => '',
+		], $atts, 'scl_perfil_jugador' );
+
+		$jugador_id       = absint( $atts['jugador_id'] );
+		$torneo_id        = absint( $atts['torneo_id'] );
+		$temporada_term_id = $atts['temporada'] ? absint( $atts['temporada'] ) : 0;
+
+		if ( ! $jugador_id ) return '';
+
+		$jugador = get_post( $jugador_id );
+		if ( ! $jugador || 'scl_jugador' !== $jugador->post_type || 'publish' !== $jugador->post_status ) {
+			return '';
+		}
+
+		$foto_id  = (int) get_post_meta( $jugador_id, 'scl_jugador_foto',      true );
+		$posicion = get_post_meta( $jugador_id, 'scl_jugador_posicion', true );
+		$stats    = Scl_Stats::get_stats_jugador( $jugador_id, $torneo_id, $temporada_term_id );
+		$foto_url = $foto_id ? wp_get_attachment_image_url( $foto_id, 'medium' ) : '';
+
+		ob_start();
+		?>
+		<div class="scl-pub-perfil-jugador">
+			<?php if ( $foto_url ) : ?>
+				<img src="<?php echo esc_url( $foto_url ); ?>" alt="<?php echo esc_attr( $jugador->post_title ); ?>" class="scl-pub-jugador-foto">
+			<?php endif; ?>
+			<h2><?php echo esc_html( $jugador->post_title ); ?></h2>
+			<?php if ( $posicion ) : ?>
+				<p class="scl-pub-jugador-posicion"><?php echo esc_html( $posicion ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( $stats && $stats->partidos > 0 ) : ?>
+				<div class="scl-pub-stats-cards">
+					<div class="scl-pub-stat-card">
+						<div class="scl-pub-stat-val"><?php echo esc_html( $stats->partidos ); ?></div>
+						<div class="scl-pub-stat-lbl"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></div>
+					</div>
+					<div class="scl-pub-stat-card">
+						<div class="scl-pub-stat-val"><?php echo esc_html( $stats->goles ); ?></div>
+						<div class="scl-pub-stat-lbl">&#9917; <?php esc_html_e( 'Goles', 'sportcriss-lite' ); ?></div>
+					</div>
+					<div class="scl-pub-stat-card">
+						<div class="scl-pub-stat-val"><?php echo esc_html( $stats->asistencias ); ?></div>
+						<div class="scl-pub-stat-lbl">&#128203; <?php esc_html_e( 'Asistencias', 'sportcriss-lite' ); ?></div>
+					</div>
+					<div class="scl-pub-stat-card">
+						<div class="scl-pub-stat-val"><?php echo esc_html( $stats->amarillas ); ?></div>
+						<div class="scl-pub-stat-lbl">&#129000; <?php esc_html_e( 'Amarillas', 'sportcriss-lite' ); ?></div>
+					</div>
+					<div class="scl-pub-stat-card">
+						<div class="scl-pub-stat-val"><?php echo esc_html( $stats->rojas ); ?></div>
+						<div class="scl-pub-stat-lbl">&#128998; <?php esc_html_e( 'Rojas', 'sportcriss-lite' ); ?></div>
+					</div>
+					<?php if ( null !== $stats->promedio_calificacion ) : ?>
+					<div class="scl-pub-stat-card">
+						<div class="scl-pub-stat-val"><?php echo esc_html( number_format( (float) $stats->promedio_calificacion, 1 ) ); ?></div>
+						<div class="scl-pub-stat-lbl">&#11088; <?php esc_html_e( 'Calificación', 'sportcriss-lite' ); ?></div>
+					</div>
+					<?php endif; ?>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
 		return ob_get_clean();
 	}
 }

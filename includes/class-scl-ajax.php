@@ -63,6 +63,15 @@ class Scl_Ajax {
 		// Sprint 12: Zona de peligro (solo administrator)
 		$loader->add_action( 'wp_ajax_scl_limpiar_transients',       [ $this, 'limpiar_transients' ] );
 		$loader->add_action( 'wp_ajax_scl_recalcular_todas_tablas',  [ $this, 'recalcular_todas_tablas' ] );
+		// Sprint Estadísticas Individuales
+		$loader->add_action( 'wp_ajax_scl_crear_jugador',             [ $this, 'ajax_crear_jugador' ] );
+		$loader->add_action( 'wp_ajax_scl_editar_jugador',            [ $this, 'ajax_editar_jugador' ] );
+		$loader->add_action( 'wp_ajax_scl_eliminar_jugador',          [ $this, 'ajax_eliminar_jugador' ] );
+		$loader->add_action( 'wp_ajax_scl_subir_foto_jugador',        [ $this, 'ajax_subir_foto_jugador' ] );
+		$loader->add_action( 'wp_ajax_scl_inscribir_jugador',         [ $this, 'ajax_inscribir_jugador' ] );
+		$loader->add_action( 'wp_ajax_scl_desinscribir_jugador',      [ $this, 'ajax_desinscribir_jugador' ] );
+		$loader->add_action( 'wp_ajax_scl_get_jugadores_partido',     [ $this, 'ajax_get_jugadores_partido' ] );
+		$loader->add_action( 'wp_ajax_scl_guardar_estadisticas_partido', [ $this, 'ajax_guardar_estadisticas_partido' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -1385,5 +1394,373 @@ class Scl_Ajax {
 		}, $partidos );
 
 		wp_send_json_success( $data );
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint Estadísticas Individuales: Jugadores CRUD
+	// -----------------------------------------------------------------------
+
+	public function ajax_crear_jugador(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$nombre    = sanitize_text_field( $_POST['nombre']    ?? '' );
+		$posicion  = sanitize_text_field( $_POST['posicion']  ?? '' );
+		$documento = sanitize_text_field( $_POST['documento'] ?? '' );
+		$foto_id   = absint( $_POST['foto_id'] ?? 0 );
+
+		if ( ! $nombre ) {
+			wp_send_json_error( 'El nombre es obligatorio.' );
+		}
+
+		$post_id = wp_insert_post( [
+			'post_type'   => 'scl_jugador',
+			'post_title'  => $nombre,
+			'post_status' => 'publish',
+			'post_author' => scl_get_autor_efectivo(),
+		], true );
+
+		if ( is_wp_error( $post_id ) ) {
+			wp_send_json_error( $post_id->get_error_message() );
+		}
+
+		update_post_meta( $post_id, 'scl_jugador_posicion',  $posicion );
+		update_post_meta( $post_id, 'scl_jugador_documento', $documento );
+		if ( $foto_id ) {
+			update_post_meta( $post_id, 'scl_jugador_foto', $foto_id );
+		}
+
+		wp_send_json_success( [
+			'id'       => $post_id,
+			'nombre'   => $nombre,
+			'posicion' => $posicion,
+			'foto_url' => $foto_id ? wp_get_attachment_image_url( $foto_id, 'thumbnail' ) : '',
+		] );
+	}
+
+	public function ajax_editar_jugador(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$jugador_id = absint( $_POST['jugador_id'] ?? 0 );
+		$nombre     = sanitize_text_field( $_POST['nombre']    ?? '' );
+		$posicion   = sanitize_text_field( $_POST['posicion']  ?? '' );
+		$documento  = sanitize_text_field( $_POST['documento'] ?? '' );
+		$foto_id    = absint( $_POST['foto_id'] ?? 0 );
+
+		if ( ! $jugador_id || ! $nombre ) {
+			wp_send_json_error( 'Datos incompletos.' );
+		}
+
+		$jugador = get_post( $jugador_id );
+		if ( ! $jugador || 'scl_jugador' !== $jugador->post_type
+			|| ( (int) $jugador->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) )
+		) {
+			wp_send_json_error( 'Jugador no válido o sin permisos.' );
+		}
+
+		wp_update_post( [
+			'ID'         => $jugador_id,
+			'post_title' => $nombre,
+		] );
+
+		update_post_meta( $jugador_id, 'scl_jugador_posicion',  $posicion );
+		update_post_meta( $jugador_id, 'scl_jugador_documento', $documento );
+		update_post_meta( $jugador_id, 'scl_jugador_foto',      $foto_id );
+
+		wp_send_json_success( [
+			'id'       => $jugador_id,
+			'nombre'   => $nombre,
+			'posicion' => $posicion,
+			'foto_url' => $foto_id ? wp_get_attachment_image_url( $foto_id, 'thumbnail' ) : '',
+		] );
+	}
+
+	public function ajax_eliminar_jugador(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$jugador_id = absint( $_POST['jugador_id'] ?? 0 );
+		if ( ! $jugador_id ) wp_send_json_error( 'ID requerido.' );
+
+		$jugador = get_post( $jugador_id );
+		if ( ! $jugador || 'scl_jugador' !== $jugador->post_type
+			|| ( (int) $jugador->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) )
+		) {
+			wp_send_json_error( 'Jugador no válido o sin permisos.' );
+		}
+
+		wp_trash_post( $jugador_id );
+		wp_send_json_success( [ 'id' => $jugador_id ] );
+	}
+
+	public function ajax_subir_foto_jugador(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		if ( empty( $_FILES['foto'] ) || $_FILES['foto']['error'] !== UPLOAD_ERR_OK ) {
+			wp_send_json_error( 'Error al recibir el archivo.' );
+		}
+
+		if ( $_FILES['foto']['size'] > 5 * 1024 * 1024 ) {
+			wp_send_json_error( 'La imagen no puede superar 5MB.' );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$attachment_id = media_handle_upload( 'foto', 0 );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( $attachment_id->get_error_message() );
+		}
+
+		wp_send_json_success( [
+			'attachment_id' => $attachment_id,
+			'url'           => wp_get_attachment_image_url( $attachment_id, 'thumbnail' ),
+		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint Estadísticas Individuales: Inscripciones
+	// -----------------------------------------------------------------------
+
+	public function ajax_inscribir_jugador(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$jugador_id       = absint( $_POST['jugador_id']       ?? 0 );
+		$equipo_id        = absint( $_POST['equipo_id']        ?? 0 );
+		$torneo_id        = absint( $_POST['torneo_id']        ?? 0 );
+		$temporada_term_id = absint( $_POST['temporada_term_id'] ?? 0 );
+
+		if ( ! $jugador_id || ! $equipo_id || ! $torneo_id ) {
+			wp_send_json_error( 'Datos incompletos.' );
+		}
+
+		$autor_ef = scl_get_autor_efectivo();
+
+		// Verificar propiedad de jugador y equipo
+		$jugador = get_post( $jugador_id );
+		$equipo  = get_post( $equipo_id );
+		if ( ! $jugador || 'scl_jugador' !== $jugador->post_type || (int) $jugador->post_author !== $autor_ef ) {
+			wp_send_json_error( 'Jugador no válido.' );
+		}
+		if ( ! $equipo || 'scl_equipo' !== $equipo->post_type || (int) $equipo->post_author !== $autor_ef ) {
+			wp_send_json_error( 'Equipo no válido.' );
+		}
+
+		global $wpdb;
+
+		// Verificar que no esté ya inscrito (UNIQUE KEY lo maneja, pero mejor mensaje)
+		$existe = $wpdb->get_var( $wpdb->prepare(
+			"SELECT id FROM {$wpdb->prefix}scl_inscripciones
+			 WHERE jugador_id = %d AND torneo_id = %d AND temporada_term_id = %d AND activo = 1",
+			$jugador_id, $torneo_id, $temporada_term_id
+		) );
+
+		if ( $existe ) {
+			wp_send_json_error( 'El jugador ya está inscrito en este torneo/temporada.' );
+		}
+
+		$inserted = $wpdb->insert(
+			"{$wpdb->prefix}scl_inscripciones",
+			[
+				'jugador_id'       => $jugador_id,
+				'equipo_id'        => $equipo_id,
+				'torneo_id'        => $torneo_id,
+				'temporada_term_id' => $temporada_term_id,
+				'organizador_id'   => $autor_ef,
+				'activo'           => 1,
+			],
+			[ '%d', '%d', '%d', '%d', '%d', '%d' ]
+		);
+
+		if ( ! $inserted ) {
+			wp_send_json_error( 'Error al inscribir el jugador.' );
+		}
+
+		wp_send_json_success( [
+			'inscripcion_id' => $wpdb->insert_id,
+			'jugador_nombre' => $jugador->post_title,
+		] );
+	}
+
+	public function ajax_desinscribir_jugador(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$inscripcion_id = absint( $_POST['inscripcion_id'] ?? 0 );
+		if ( ! $inscripcion_id ) wp_send_json_error( 'ID requerido.' );
+
+		global $wpdb;
+
+		// Verificar propiedad
+		$insc = $wpdb->get_row( $wpdb->prepare(
+			"SELECT * FROM {$wpdb->prefix}scl_inscripciones WHERE id = %d",
+			$inscripcion_id
+		) );
+
+		if ( ! $insc || (int) $insc->organizador_id !== scl_get_autor_efectivo() ) {
+			wp_send_json_error( 'Sin permisos.' );
+		}
+
+		$wpdb->update(
+			"{$wpdb->prefix}scl_inscripciones",
+			[ 'activo' => 0 ],
+			[ 'id' => $inscripcion_id ],
+			[ '%d' ],
+			[ '%d' ]
+		);
+
+		wp_send_json_success( [ 'id' => $inscripcion_id ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Sprint Estadísticas Individuales: Estadísticas de partido
+	// -----------------------------------------------------------------------
+
+	public function ajax_get_jugadores_partido(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$partido_id = absint( $_POST['partido_id'] ?? 0 );
+		if ( ! $partido_id ) wp_send_json_error( 'ID requerido.' );
+
+		$local_id  = (int) get_post_meta( $partido_id, 'scl_partido_equipo_local_id',  true );
+		$visita_id = (int) get_post_meta( $partido_id, 'scl_partido_equipo_visita_id', true );
+		$torneo_id = (int) get_post_meta( $partido_id, 'scl_partido_torneo_id', true );
+
+		$temporadas = wp_get_post_terms( $partido_id, 'scl_temporada' );
+		$temp_id    = ! empty( $temporadas ) ? (int) $temporadas[0]->term_id : 0;
+
+		wp_send_json_success( [
+			'local'  => Scl_Stats::get_jugadores_inscritos( $local_id,  $torneo_id, $temp_id ),
+			'visita' => Scl_Stats::get_jugadores_inscritos( $visita_id, $torneo_id, $temp_id ),
+		] );
+	}
+
+	public function ajax_guardar_estadisticas_partido(): void {
+		check_ajax_referer( 'scl_dashboard_nonce', 'nonce' );
+		if ( ! $this->puede_gestionar() ) wp_send_json_error( 'Sin permisos.' );
+
+		$partido_id = absint( $_POST['partido_id'] ?? 0 );
+		$stats_raw  = $_POST['stats'] ?? [];
+
+		if ( ! $partido_id ) wp_send_json_error( 'partido_id requerido.' );
+		if ( ! is_array( $stats_raw ) ) wp_send_json_error( 'Formato inválido.' );
+
+		// Verificar propiedad del partido
+		$partido = get_post( $partido_id );
+		if ( ! $partido || 'scl_partido' !== $partido->post_type
+			|| ( (int) $partido->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) )
+		) {
+			wp_send_json_error( 'Sin permisos sobre este partido.' );
+		}
+
+		if ( 'finalizado' !== get_post_meta( $partido_id, 'scl_partido_estado', true ) ) {
+			wp_send_json_error( 'Solo se pueden guardar estadísticas de partidos finalizados.' );
+		}
+
+		$torneo_id = (int) get_post_meta( $partido_id, 'scl_partido_torneo_id', true );
+		$temporadas = wp_get_post_terms( $partido_id, 'scl_temporada' );
+		$temp_id    = ! empty( $temporadas ) ? (int) $temporadas[0]->term_id : 0;
+		$autor_ef   = scl_get_autor_efectivo();
+
+		global $wpdb;
+		$errores   = [];
+		$guardados = 0;
+
+		foreach ( $stats_raw as $row ) {
+			$jugador_id     = absint( $row['jugador_id']    ?? 0 );
+			$equipo_id      = absint( $row['equipo_id']     ?? 0 );
+			$inscripcion_id = absint( $row['inscripcion_id'] ?? 0 );
+
+			if ( ! $jugador_id || ! $equipo_id ) continue;
+
+			$goles       = absint( $row['goles']   ?? 0 );
+			$asistencias = absint( $row['asistencias'] ?? 0 );
+			$amarilla    = isset( $row['tarjeta_amarilla'] ) && $row['tarjeta_amarilla'] ? 1 : 0;
+			$roja        = isset( $row['tarjeta_roja'] )     && $row['tarjeta_roja']     ? 1 : 0;
+			$calificacion_raw = $row['calificacion'] ?? '';
+			$calificacion = '' !== $calificacion_raw ? min( 10, max( 0, (float) $calificacion_raw ) ) : null;
+			$es_penales   = isset( $row['es_penales'] ) && $row['es_penales'] ? 1 : 0;
+
+			$data = [
+				'partido_id'       => $partido_id,
+				'inscripcion_id'   => $inscripcion_id,
+				'jugador_id'       => $jugador_id,
+				'equipo_id'        => $equipo_id,
+				'torneo_id'        => $torneo_id,
+				'temporada_term_id' => $temp_id,
+				'organizador_id'   => $autor_ef,
+				'goles'            => $goles,
+				'asistencias'      => $asistencias,
+				'tarjeta_amarilla' => $amarilla,
+				'tarjeta_roja'     => $roja,
+				'calificacion'     => $calificacion,
+				'es_penales'       => $es_penales,
+			];
+
+			$formats = [ '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%d', null === $calificacion ? 'NULL' : '%f', '%d' ];
+
+			// Usar INSERT ... ON DUPLICATE KEY UPDATE (partido_jugador UNIQUE)
+			$existe = $wpdb->get_var( $wpdb->prepare(
+				"SELECT id FROM {$wpdb->prefix}scl_estadisticas WHERE partido_id = %d AND jugador_id = %d",
+				$partido_id, $jugador_id
+			) );
+
+			if ( $existe ) {
+				$updated = $wpdb->update(
+					"{$wpdb->prefix}scl_estadisticas",
+					array_diff_key( $data, [ 'partido_id' => 0, 'jugador_id' => 0 ] ),
+					[ 'partido_id' => $partido_id, 'jugador_id' => $jugador_id ],
+					null,
+					[ '%d', '%d' ]
+				);
+				if ( false !== $updated ) $guardados++;
+			} else {
+				$inserted = $wpdb->insert( "{$wpdb->prefix}scl_estadisticas", $data );
+				if ( $inserted ) $guardados++;
+				else $errores[] = "Jugador {$jugador_id}: " . $wpdb->last_error;
+			}
+		}
+
+		// Guardar penales en la llave si vienen
+		$llave_id = absint( $_POST['llave_id'] ?? 0 );
+		if ( $llave_id ) {
+			$penales_local  = absint( $_POST['penales_local']  ?? 0 );
+			$penales_visita = absint( $_POST['penales_visita'] ?? 0 );
+			update_post_meta( $llave_id, 'scl_llave_penales_local',  $penales_local );
+			update_post_meta( $llave_id, 'scl_llave_penales_visita', $penales_visita );
+		}
+
+		if ( ! empty( $errores ) ) {
+			wp_send_json_error( [
+				'guardados' => $guardados,
+				'errores'   => $errores,
+			] );
+		}
+
+		// Retornar validación de goles
+		$local_id  = (int) get_post_meta( $partido_id, 'scl_partido_equipo_local_id',  true );
+		$visita_id = (int) get_post_meta( $partido_id, 'scl_partido_equipo_visita_id', true );
+
+		wp_send_json_success( [
+			'guardados'   => $guardados,
+			'val_local'   => Scl_Stats::validar_goles_partido( $partido_id, $local_id ),
+			'val_visita'  => Scl_Stats::validar_goles_partido( $partido_id, $visita_id ),
+		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Helper privado
+	// -----------------------------------------------------------------------
+
+	private function puede_gestionar(): bool {
+		return current_user_can( 'manage_options' )
+			|| current_user_can( 'scl_organizador' )
+			|| current_user_can( 'scl_colaborador' );
 	}
 }

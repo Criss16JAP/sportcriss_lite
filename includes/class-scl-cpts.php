@@ -32,6 +32,7 @@ class Scl_Cpts {
 		self::registrar_partido();
 		self::registrar_llave();
 		self::registrar_grupo();
+		self::registrar_jugador();
 		self::registrar_anunciante();
 		self::registrar_anuncio();
 	}
@@ -233,6 +234,39 @@ class Scl_Cpts {
 				'edit_private_posts'  => 'manage_options',
 				'delete_private_posts'=> 'manage_options',
 			],
+		] );
+	}
+
+	/**
+	 * CPT: scl_jugador
+	 *
+	 * Jugadores deportivos. post_author = organizador propietario.
+	 * Se vinculan a equipos y torneos via la tabla scl_inscripciones.
+	 */
+	private static function registrar_jugador() {
+		$labels = [
+			'name'               => __( 'Jugadores',              'sportcriss-lite' ),
+			'singular_name'      => __( 'Jugador',                'sportcriss-lite' ),
+			'add_new'            => __( 'Añadir jugador',         'sportcriss-lite' ),
+			'add_new_item'       => __( 'Añadir nuevo jugador',   'sportcriss-lite' ),
+			'edit_item'          => __( 'Editar jugador',         'sportcriss-lite' ),
+			'new_item'           => __( 'Nuevo jugador',          'sportcriss-lite' ),
+			'view_item'          => __( 'Ver jugador',            'sportcriss-lite' ),
+			'search_items'       => __( 'Buscar jugadores',       'sportcriss-lite' ),
+			'not_found'          => __( 'No se encontraron jugadores', 'sportcriss-lite' ),
+			'not_found_in_trash' => __( 'No hay jugadores en la papelera', 'sportcriss-lite' ),
+			'menu_name'          => __( 'Jugadores',              'sportcriss-lite' ),
+		];
+
+		register_post_type( 'scl_jugador', [
+			'labels'        => $labels,
+			'public'        => true,
+			'has_archive'   => true,
+			'hierarchical'  => false,
+			'show_in_rest'  => false,
+			'show_in_menu'  => false,
+			'supports'      => [ 'title', 'thumbnail' ],
+			'rewrite'       => [ 'slug' => 'jugador', 'with_front' => false ],
 		] );
 	}
 
