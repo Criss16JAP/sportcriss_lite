@@ -67,6 +67,9 @@ $home_url = home_url( '/mi-panel/' );
 			+ <?php esc_html_e( 'Crear equipo', 'sportcriss-lite' ); ?>
 		</a>
 		<?php if ( ! scl_es_colaborador() ) : ?>
+		<a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'grupos', $home_url ) ); ?>" class="scl-btn scl-btn--outline">
+			+ <?php esc_html_e( 'Crear grupo', 'sportcriss-lite' ); ?>
+		</a>
 		<a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>" class="scl-btn scl-btn--outline">
 			↑ <?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?>
 		</a>
