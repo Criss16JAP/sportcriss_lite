@@ -92,6 +92,9 @@ class Scl_Export {
 		$vars[] = 'scl_temporada';
 		$vars[] = 'scl_grupo';
 		$vars[] = 'scl_token';
+		$vars[] = 'scl_tipo';
+		$vars[] = 'scl_stats_tipo';
+		$vars[] = 'scl_stats_limite';
 		return $vars;
 	}
 
@@ -114,36 +117,46 @@ class Scl_Export {
 			);
 		}
 
+		$tipo              = sanitize_key( get_query_var( 'scl_tipo' ) ?: 'tabla' );
 		$temporada_term_id = (int) get_query_var( 'scl_temporada' );
 		$grupo_id          = (int) get_query_var( 'scl_grupo' );
 
-		// Datos para el template
+		// Datos de torneo comunes a todos los tipos
 		$torneo        = get_post( $torneo_id );
 		$temporada_obj = $temporada_term_id ? get_term( $temporada_term_id, 'scl_temporada' ) : null;
-		$grupo_obj     = $grupo_id ? get_post( $grupo_id ) : null;
 
-		$logo_id   = (int) get_post_meta( $torneo_id, 'scl_torneo_logo',           true );
-		$fondo_id  = (int) get_post_meta( $torneo_id, 'scl_torneo_fondo',          true );
-		$color_1   = get_post_meta( $torneo_id, 'scl_torneo_color_primario',   true ) ?: '#1a3a5c';
-		$color_2   = get_post_meta( $torneo_id, 'scl_torneo_color_secundario', true ) ?: '#f5a623';
-		$siglas    = get_post_meta( $torneo_id, 'scl_torneo_siglas',           true ) ?: '';
+		$logo_id   = (int) get_post_meta( $torneo_id, 'scl_torneo_logo',            true );
+		$fondo_id  = (int) get_post_meta( $torneo_id, 'scl_torneo_fondo',           true );
+		$color_1   = get_post_meta( $torneo_id, 'scl_torneo_color_primario',    true ) ?: '#1a3a5c';
+		$color_2   = get_post_meta( $torneo_id, 'scl_torneo_color_secundario',  true ) ?: '#f5a623';
+		$siglas    = get_post_meta( $torneo_id, 'scl_torneo_siglas',            true ) ?: '';
 
 		$logo_url  = $logo_id  ? (string) wp_get_attachment_image_url( $logo_id,  [ 120, 120 ] ) : '';
 		$fondo_url = $fondo_id ? (string) wp_get_attachment_image_url( $fondo_id, 'large' )       : '';
 
 		$titulo_torneo = $torneo ? $torneo->post_title : '';
 		$titulo_temp   = ( $temporada_obj && ! is_wp_error( $temporada_obj ) ) ? $temporada_obj->name : '';
-		$titulo_grupo  = ( $grupo_obj && 'scl_grupo' === $grupo_obj->post_type ) ? $grupo_obj->post_title : '';
-
-		$tabla      = self::get_tabla_render( $torneo_id, $temporada_term_id, $grupo_id );
-		$updated_at = get_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_updated_at", true );
-		$fecha_act  = $updated_at ? date_i18n( 'j M Y · H:i', strtotime( $updated_at ) ) : '';
 
 		status_header( 200 );
 		nocache_headers();
 		header( 'Content-Type: text/html; charset=UTF-8' );
 
-		include SCL_PATH . 'templates/public/export-tabla.php';
+		if ( 'stats' === $tipo ) {
+			$stats_tipo   = sanitize_key( get_query_var( 'scl_stats_tipo' ) ?: 'goleadores' );
+			$stats_limite = max( 5, min( 20, (int) ( get_query_var( 'scl_stats_limite' ) ?: 10 ) ) );
+			$stats_data   = self::get_stats_render( $torneo_id, $temporada_term_id, $stats_tipo, $stats_limite );
+			include SCL_PATH . 'templates/public/export-stats.php';
+		} elseif ( 'partidos' === $tipo ) {
+			$partidos_data = self::get_partidos_render( $torneo_id, $temporada_term_id );
+			include SCL_PATH . 'templates/public/export-partidos.php';
+		} else {
+			$grupo_obj  = $grupo_id ? get_post( $grupo_id ) : null;
+			$titulo_grupo = ( $grupo_obj && 'scl_grupo' === $grupo_obj->post_type ) ? $grupo_obj->post_title : '';
+			$tabla      = self::get_tabla_render( $torneo_id, $temporada_term_id, $grupo_id );
+			$updated_at = get_post_meta( $torneo_id, "scl_tabla_{$temporada_term_id}_updated_at", true );
+			$fecha_act  = $updated_at ? date_i18n( 'j M Y · H:i', strtotime( $updated_at ) ) : '';
+			include SCL_PATH . 'templates/public/export-tabla.php';
+		}
 		exit;
 	}
 
@@ -197,6 +210,153 @@ class Scl_Export {
 			}
 			return $equipo;
 		}, $tabla );
+	}
+
+	/**
+	 * Construye la URL de exportación de estadísticas individuales.
+	 */
+	public static function get_url_stats(
+		int $torneo_id,
+		int $temporada_term_id = 0,
+		string $stats_tipo = 'goleadores',
+		int $limite = 10,
+		int $autor_id = 0
+	): string {
+		$autor_id = $autor_id ?: (int) get_post_field( 'post_author', $torneo_id );
+		$token    = scl_generar_token_exportacion( $torneo_id, $autor_id );
+
+		return add_query_arg( [
+			'scl_exportar'      => '1',
+			'scl_tipo'          => 'stats',
+			'scl_torneo'        => $torneo_id,
+			'scl_temporada'     => $temporada_term_id,
+			'scl_stats_tipo'    => $stats_tipo,
+			'scl_stats_limite'  => $limite,
+			'scl_token'         => $token,
+		], home_url( '/' ) );
+	}
+
+	/**
+	 * Construye la URL de exportación de partidos/resultados.
+	 */
+	public static function get_url_partidos(
+		int $torneo_id,
+		int $temporada_term_id = 0,
+		int $autor_id = 0
+	): string {
+		$autor_id = $autor_id ?: (int) get_post_field( 'post_author', $torneo_id );
+		$token    = scl_generar_token_exportacion( $torneo_id, $autor_id );
+
+		return add_query_arg( [
+			'scl_exportar'  => '1',
+			'scl_tipo'      => 'partidos',
+			'scl_torneo'    => $torneo_id,
+			'scl_temporada' => $temporada_term_id,
+			'scl_token'     => $token,
+		], home_url( '/' ) );
+	}
+
+	/**
+	 * Obtiene los datos de estadísticas para renderizar en el template.
+	 */
+	public static function get_stats_render( int $torneo_id, int $temporada_term_id, string $tipo, int $limite ): array {
+		switch ( $tipo ) {
+			case 'asistencias':
+				return Scl_Stats::get_asistencias( $torneo_id, $temporada_term_id, $limite );
+			case 'tarjetas_amarillas':
+				return Scl_Stats::get_tarjetas( $torneo_id, $temporada_term_id, 'amarilla', $limite );
+			case 'tarjetas_rojas':
+				return Scl_Stats::get_tarjetas( $torneo_id, $temporada_term_id, 'roja', $limite );
+			case 'calificaciones':
+				return Scl_Stats::get_calificaciones( $torneo_id, $temporada_term_id, 1, $limite );
+			default:
+				return Scl_Stats::get_goleadores( $torneo_id, $temporada_term_id, $limite );
+		}
+	}
+
+	/**
+	 * Obtiene partidos agrupados por jornada para renderizar.
+	 * Devuelve array: [ [ 'jornada' => term, 'partidos' => [...] ], ... ]
+	 */
+	public static function get_partidos_render( int $torneo_id, int $temporada_term_id ): array {
+		$args = [
+			'post_type'      => 'scl_partido',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'meta_value',
+			'meta_key'       => 'scl_partido_fecha',
+			'order'          => 'ASC',
+			'meta_query'     => [ [
+				'key'   => 'scl_partido_torneo_id',
+				'value' => $torneo_id,
+				'type'  => 'NUMERIC',
+			] ],
+		];
+
+		if ( $temporada_term_id ) {
+			$args['tax_query'] = [ [
+				'taxonomy' => 'scl_temporada',
+				'field'    => 'term_id',
+				'terms'    => $temporada_term_id,
+			] ];
+		}
+
+		$partidos = get_posts( $args );
+		if ( empty( $partidos ) ) {
+			return [];
+		}
+
+		// Precarga metas y escudos
+		$ids = wp_list_pluck( $partidos, 'ID' );
+		update_meta_cache( 'post', $ids );
+
+		// Agrupar por jornada
+		$grupos = [];
+		$sin_jornada = [];
+
+		foreach ( $partidos as $p ) {
+			$jornadas = wp_get_post_terms( $p->ID, 'scl_jornada' );
+			$jornada  = ( ! is_wp_error( $jornadas ) && ! empty( $jornadas ) ) ? $jornadas[0] : null;
+
+			$local_id   = (int) get_post_meta( $p->ID, 'scl_partido_equipo_local_id',  true );
+			$visita_id  = (int) get_post_meta( $p->ID, 'scl_partido_equipo_visita_id', true );
+			$goles_l    = get_post_meta( $p->ID, 'scl_partido_goles_local',  true );
+			$goles_v    = get_post_meta( $p->ID, 'scl_partido_goles_visita', true );
+			$estado     = get_post_meta( $p->ID, 'scl_partido_estado',       true );
+			$fecha      = get_post_meta( $p->ID, 'scl_partido_fecha',        true );
+
+			$local_post  = get_post( $local_id );
+			$visita_post = get_post( $visita_id );
+
+			$escudo_l_id = (int) get_post_meta( $local_id,  'scl_equipo_escudo', true );
+			$escudo_v_id = (int) get_post_meta( $visita_id, 'scl_equipo_escudo', true );
+
+			$partido_data = [
+				'id'           => $p->ID,
+				'local'        => $local_post  ? $local_post->post_title  : '—',
+				'visita'       => $visita_post ? $visita_post->post_title : '—',
+				'escudo_local' => $escudo_l_id ? (string) wp_get_attachment_image_url( $escudo_l_id, [ 50, 50 ] ) : '',
+				'escudo_visita'=> $escudo_v_id ? (string) wp_get_attachment_image_url( $escudo_v_id, [ 50, 50 ] ) : '',
+				'goles_local'  => $goles_l !== '' && $goles_l !== null && $estado === 'finalizado' ? (int) $goles_l : null,
+				'goles_visita' => $goles_v !== '' && $goles_v !== null && $estado === 'finalizado' ? (int) $goles_v : null,
+				'estado'       => $estado ?: 'pendiente',
+				'fecha'        => $fecha ? date_i18n( 'j M', strtotime( $fecha ) ) : '',
+			];
+
+			if ( $jornada ) {
+				$grupos[ $jornada->term_id ]['jornada'] = $jornada;
+				$grupos[ $jornada->term_id ]['partidos'][] = $partido_data;
+			} else {
+				$sin_jornada[] = $partido_data;
+			}
+		}
+
+		$resultado = array_values( $grupos );
+		if ( ! empty( $sin_jornada ) ) {
+			$resultado[] = [ 'jornada' => null, 'partidos' => $sin_jornada ];
+		}
+
+		return $resultado;
 	}
 
 	/**

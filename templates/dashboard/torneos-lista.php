@@ -53,10 +53,12 @@ $torneos = get_posts( [
 					</div>
 				</div>
 				<div class="scl-torneo-card__actions">
-					<a href="?scl_ruta=partidos&scl_torneo_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline">Ver partidos</a>
-					<a href="?scl_ruta=grupos&scl_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline">Grupos</a>
-					<a href="?scl_ruta=torneos&scl_id=<?php echo esc_attr( $t->ID ); ?>&scl_accion=editar" class="scl-btn scl-btn--outline">Editar</a>
-					<button type="button" class="scl-btn scl-btn--danger" onclick="scl_confirmar_eliminar_torneo(<?php echo esc_attr( $t->ID ); ?>, '<?php echo esc_js( $t->post_title ); ?>')">Eliminar</button>
+					<a href="?scl_ruta=ver_tabla&scl_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline"><?php esc_html_e( 'Ver tabla', 'sportcriss-lite' ); ?></a>
+					<a href="?scl_ruta=ver_stats&scl_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline"><?php esc_html_e( 'Ver stats', 'sportcriss-lite' ); ?></a>
+					<a href="?scl_ruta=partidos&scl_torneo_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></a>
+					<a href="?scl_ruta=grupos&scl_id=<?php echo esc_attr( $t->ID ); ?>" class="scl-btn scl-btn--outline"><?php esc_html_e( 'Grupos', 'sportcriss-lite' ); ?></a>
+					<a href="?scl_ruta=torneos&scl_id=<?php echo esc_attr( $t->ID ); ?>&scl_accion=editar" class="scl-btn scl-btn--outline"><?php esc_html_e( 'Editar', 'sportcriss-lite' ); ?></a>
+					<button type="button" class="scl-btn scl-btn--danger" onclick="scl_confirmar_eliminar_torneo(<?php echo esc_attr( $t->ID ); ?>, '<?php echo esc_js( $t->post_title ); ?>')"><?php esc_html_e( 'Eliminar', 'sportcriss-lite' ); ?></button>
 				</div>
 			</div>
 		<?php endforeach; ?>

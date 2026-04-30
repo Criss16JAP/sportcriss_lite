@@ -76,7 +76,7 @@ if ( ! $torneo_id ) {
  * Con torneo seleccionado → preview + controles
  * ────────────────────────────────────────────────────────────────────────── */
 $torneo = get_post( $torneo_id );
-if ( ! $torneo || (int) $torneo->post_author !== $autor_ef ) {
+if ( ! $torneo || ( (int) $torneo->post_author !== $autor_ef && ! current_user_can( 'manage_options' ) ) ) {
 	echo '<div class="scl-empty"><p>' . esc_html__( 'Torneo no encontrado.', 'sportcriss-lite' ) . '</p></div>';
 	return;
 }
@@ -134,7 +134,7 @@ $logo_id = (int) get_post_meta( $torneo_id, 'scl_torneo_logo', true );
 			<?php echo esc_html( $torneo->post_title ); ?>
 		</h2>
 	</div>
-	<a href="<?php echo esc_url( $export_url ); ?>"
+	<a href="#"
 	   target="_blank"
 	   rel="noopener"
 	   class="scl-btn scl-btn--primary"
@@ -143,73 +143,184 @@ $logo_id = (int) get_post_meta( $torneo_id, 'scl_torneo_logo', true );
 	</a>
 </div>
 
-<!-- Controles de filtro -->
-<div class="scl-exportar-controles scl-form-section">
-	<div class="scl-field-row">
-		<div class="scl-field">
-			<label><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label>
-			<select id="scl_export_temporada">
-				<option value="0"><?php esc_html_e( '— Todas —', 'sportcriss-lite' ); ?></option>
-				<?php foreach ( $temporadas as $t ) : ?>
-					<option value="<?php echo esc_attr( $t->term_id ); ?>"
-					        <?php selected( $temp_sel, $t->term_id ); ?>>
-						<?php echo esc_html( $t->name ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-		</div>
+<?php
+// URLs base para cada tipo de exportación
+$export_url_tabla    = Scl_Export::get_url( $torneo_id, $temp_sel, $grupo_sel );
+$export_url_stats    = Scl_Export::get_url_stats( $torneo_id, $temp_sel, 'goleadores', 10 );
+$export_url_partidos = Scl_Export::get_url_partidos( $torneo_id, $temp_sel );
+?>
 
-		<?php if ( ! empty( $grupos ) ) : ?>
-		<div class="scl-field">
-			<label><?php esc_html_e( 'Grupo', 'sportcriss-lite' ); ?></label>
-			<select id="scl_export_grupo">
-				<option value="0"><?php esc_html_e( 'General (todos los grupos)', 'sportcriss-lite' ); ?></option>
-				<?php foreach ( $grupos as $g ) : ?>
-					<option value="<?php echo esc_attr( $g->ID ); ?>"
-					        <?php selected( $grupo_sel, $g->ID ); ?>>
-						<?php echo esc_html( $g->post_title ); ?>
-					</option>
-				<?php endforeach; ?>
-			</select>
-		</div>
-		<?php endif; ?>
+<!-- Tabs de tipo de exportación -->
+<div class="scl-tabs scl-exportar-tabs">
+	<button type="button" class="scl-tab scl-tab--active" data-tab="tabla">
+		<?php esc_html_e( 'Tabla de posiciones', 'sportcriss-lite' ); ?>
+	</button>
+	<button type="button" class="scl-tab" data-tab="stats">
+		<?php esc_html_e( 'Estadísticas', 'sportcriss-lite' ); ?>
+	</button>
+	<button type="button" class="scl-tab" data-tab="partidos">
+		<?php esc_html_e( 'Resultados', 'sportcriss-lite' ); ?>
+	</button>
+</div>
 
-		<div class="scl-field scl-field--auto">
-			<label>&nbsp;</label>
-			<button type="button" class="scl-btn scl-btn--outline" id="scl_export_actualizar">
-				<?php esc_html_e( 'Actualizar vista', 'sportcriss-lite' ); ?>
-			</button>
+<!-- ── TAB: TABLA ─────────────────────────────────────────────── -->
+<div class="scl-exportar-tab-panel" id="scl_exp_panel_tabla">
+	<div class="scl-exportar-controles scl-form-section">
+		<div class="scl-field-row">
+			<div class="scl-field">
+				<label><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label>
+				<select id="scl_export_temporada">
+					<option value="0"><?php esc_html_e( '— Todas —', 'sportcriss-lite' ); ?></option>
+					<?php foreach ( $temporadas as $t ) : ?>
+						<option value="<?php echo esc_attr( $t->term_id ); ?>"
+						        <?php selected( $temp_sel, $t->term_id ); ?>>
+							<?php echo esc_html( $t->name ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+
+			<?php if ( ! empty( $grupos ) ) : ?>
+			<div class="scl-field">
+				<label><?php esc_html_e( 'Grupo', 'sportcriss-lite' ); ?></label>
+				<select id="scl_export_grupo">
+					<option value="0"><?php esc_html_e( 'General (todos los grupos)', 'sportcriss-lite' ); ?></option>
+					<?php foreach ( $grupos as $g ) : ?>
+						<option value="<?php echo esc_attr( $g->ID ); ?>"
+						        <?php selected( $grupo_sel, $g->ID ); ?>>
+							<?php echo esc_html( $g->post_title ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<?php endif; ?>
+
+			<div class="scl-field scl-field--auto">
+				<label>&nbsp;</label>
+				<button type="button" class="scl-btn scl-btn--outline" id="scl_export_actualizar">
+					<?php esc_html_e( 'Actualizar vista', 'sportcriss-lite' ); ?>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="scl-exportar-preview">
+		<div class="scl-exportar-preview__label">
+			<?php esc_html_e( 'Vista previa — La imagen final puede variar levemente según el navegador', 'sportcriss-lite' ); ?>
+		</div>
+		<div class="scl-exportar-preview__frame-wrap">
+			<iframe id="scl_export_frame"
+			        src="<?php echo esc_url( $export_url_tabla ); ?>"
+			        class="scl-exportar-iframe"
+			        scrolling="no"></iframe>
+		</div>
+		<div class="scl-exportar-preview__instrucciones">
+			<p>💡 <strong><?php esc_html_e( '¿Cómo tomar el pantallazo?', 'sportcriss-lite' ); ?></strong>
+			<?php esc_html_e( 'Haz clic en "Abrir para pantallazo" → pestaña limpia → Cmd+Shift+4 (Mac) o Win+Shift+S (Windows).', 'sportcriss-lite' ); ?></p>
 		</div>
 	</div>
 </div>
 
-<!-- Preview embebida -->
-<div class="scl-exportar-preview">
-	<div class="scl-exportar-preview__label">
-		<?php esc_html_e( 'Vista previa — La imagen final puede variar levemente según el navegador', 'sportcriss-lite' ); ?>
+<!-- ── TAB: ESTADÍSTICAS ─────────────────────────────────────── -->
+<div class="scl-exportar-tab-panel" id="scl_exp_panel_stats" style="display:none;">
+	<div class="scl-exportar-controles scl-form-section">
+		<div class="scl-field-row">
+			<div class="scl-field">
+				<label><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label>
+				<select id="scl_stats_temporada">
+					<option value="0"><?php esc_html_e( '— Todas —', 'sportcriss-lite' ); ?></option>
+					<?php foreach ( $temporadas as $t ) : ?>
+						<option value="<?php echo esc_attr( $t->term_id ); ?>"
+						        <?php selected( $temp_sel, $t->term_id ); ?>>
+							<?php echo esc_html( $t->name ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<div class="scl-field">
+				<label><?php esc_html_e( 'Estadística', 'sportcriss-lite' ); ?></label>
+				<select id="scl_stats_tipo">
+					<option value="goleadores"><?php esc_html_e( 'Goleadores', 'sportcriss-lite' ); ?></option>
+					<option value="asistencias"><?php esc_html_e( 'Asistencias', 'sportcriss-lite' ); ?></option>
+					<option value="tarjetas_amarillas"><?php esc_html_e( 'Tarjetas Amarillas', 'sportcriss-lite' ); ?></option>
+					<option value="tarjetas_rojas"><?php esc_html_e( 'Tarjetas Rojas', 'sportcriss-lite' ); ?></option>
+					<option value="calificaciones"><?php esc_html_e( 'Calificaciones', 'sportcriss-lite' ); ?></option>
+				</select>
+			</div>
+			<div class="scl-field" style="max-width:100px;">
+				<label><?php esc_html_e( 'Límite', 'sportcriss-lite' ); ?></label>
+				<select id="scl_stats_limite">
+					<option value="5">5</option>
+					<option value="10" selected>10</option>
+					<option value="15">15</option>
+					<option value="20">20</option>
+				</select>
+			</div>
+			<div class="scl-field scl-field--auto">
+				<label>&nbsp;</label>
+				<button type="button" class="scl-btn scl-btn--outline" id="scl_stats_actualizar">
+					<?php esc_html_e( 'Actualizar vista', 'sportcriss-lite' ); ?>
+				</button>
+			</div>
+		</div>
 	</div>
-	<div class="scl-exportar-preview__frame-wrap">
-		<iframe id="scl_export_frame"
-		        src="<?php echo esc_url( $export_url ); ?>"
-		        class="scl-exportar-iframe"
-		        scrolling="no"></iframe>
+
+	<div class="scl-exportar-preview">
+		<div class="scl-exportar-preview__label">
+			<?php esc_html_e( 'Vista previa de estadísticas', 'sportcriss-lite' ); ?>
+		</div>
+		<div class="scl-exportar-preview__frame-wrap">
+			<iframe id="scl_stats_frame"
+			        src="<?php echo esc_url( $export_url_stats ); ?>"
+			        class="scl-exportar-iframe"
+			        scrolling="no"></iframe>
+		</div>
 	</div>
-	<div class="scl-exportar-preview__instrucciones">
-		<p>
-			💡 <strong><?php esc_html_e( '¿Cómo tomar el pantallazo?', 'sportcriss-lite' ); ?></strong>
-			<?php esc_html_e( 'Haz clic en "Abrir para pantallazo" → se abre en una pestaña limpia →', 'sportcriss-lite' ); ?>
-			<?php esc_html_e( 'usa', 'sportcriss-lite' ); ?> <kbd>Cmd+Shift+4</kbd> (Mac) <?php esc_html_e( 'o', 'sportcriss-lite' ); ?> <kbd>Win+Shift+S</kbd> (Windows)
-			<?php esc_html_e( 'para capturar la tabla.', 'sportcriss-lite' ); ?>
-		</p>
-		<p>
-			<?php esc_html_e( 'También puedes usar la extensión', 'sportcriss-lite' ); ?>
-			<strong>GoFullPage</strong>
-			<?php esc_html_e( 'en Chrome para capturar la página completa automáticamente.', 'sportcriss-lite' ); ?>
-		</p>
+</div>
+
+<!-- ── TAB: RESULTADOS/PARTIDOS ──────────────────────────────── -->
+<div class="scl-exportar-tab-panel" id="scl_exp_panel_partidos" style="display:none;">
+	<div class="scl-exportar-controles scl-form-section">
+		<div class="scl-field-row">
+			<div class="scl-field">
+				<label><?php esc_html_e( 'Temporada', 'sportcriss-lite' ); ?></label>
+				<select id="scl_partidos_temporada">
+					<option value="0"><?php esc_html_e( '— Todas —', 'sportcriss-lite' ); ?></option>
+					<?php foreach ( $temporadas as $t ) : ?>
+						<option value="<?php echo esc_attr( $t->term_id ); ?>"
+						        <?php selected( $temp_sel, $t->term_id ); ?>>
+							<?php echo esc_html( $t->name ); ?>
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</div>
+			<div class="scl-field scl-field--auto">
+				<label>&nbsp;</label>
+				<button type="button" class="scl-btn scl-btn--outline" id="scl_partidos_actualizar">
+					<?php esc_html_e( 'Actualizar vista', 'sportcriss-lite' ); ?>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="scl-exportar-preview">
+		<div class="scl-exportar-preview__label">
+			<?php esc_html_e( 'Vista previa de resultados', 'sportcriss-lite' ); ?>
+		</div>
+		<div class="scl-exportar-preview__frame-wrap">
+			<iframe id="scl_partidos_frame"
+			        src="<?php echo esc_url( $export_url_partidos ); ?>"
+			        class="scl-exportar-iframe"
+			        scrolling="no"></iframe>
+		</div>
 	</div>
 </div>
 
 <script>
-/* Datos para el JS de exportación */
 var scl_export_torneo_id = <?php echo (int) $torneo_id; ?>;
+var scl_export_base_urls = {
+	tabla:    <?php echo wp_json_encode( $export_url_tabla ); ?>,
+	stats:    <?php echo wp_json_encode( $export_url_stats ); ?>,
+	partidos: <?php echo wp_json_encode( $export_url_partidos ); ?>,
+};
 </script>

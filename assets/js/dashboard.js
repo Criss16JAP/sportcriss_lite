@@ -1069,19 +1069,34 @@ jQuery(document).ready(function($) {
 
 // ── EXPORTACIÓN ────────────────────────────────────────────────────────────────
 (function($) {
+	if ( ! $('#scl_exp_panel_tabla').length && ! $('#scl_export_frame').length ) return;
+
+	var $btnAbrir   = $('#scl_abrir_export');
+	var activeTab   = 'tabla';
+
+	// ── Tab switching ────────────────────────────────────────────
+	$('.scl-exportar-tabs .scl-tab').on('click', function() {
+		var tab = $(this).data('tab');
+		activeTab = tab;
+		$('.scl-exportar-tabs .scl-tab').removeClass('scl-tab--active');
+		$(this).addClass('scl-tab--active');
+		$('.scl-exportar-tab-panel').hide();
+		$('#scl_exp_panel_' + tab).show();
+		// Update "Abrir" button href to active panel's current frame src
+		var frame = $('#scl_exp_panel_' + tab).find('iframe');
+		if (frame.length) $btnAbrir.attr('href', frame.attr('src') || '#');
+	});
+
+	// ── TAB TABLA ────────────────────────────────────────────────
 	var $tempSelect    = $('#scl_export_temporada');
 	var $grupoSelect   = $('#scl_export_grupo');
 	var $frame         = $('#scl_export_frame');
-	var $btnAbrir      = $('#scl_abrir_export');
 	var $btnActualizar = $('#scl_export_actualizar');
 
-	if ( ! $frame.length ) return;
-
-	function scl_build_export_url() {
-		var params     = new URLSearchParams(window.location.search);
-		var torneo     = params.get('scl_id') || (typeof scl_export_torneo_id !== 'undefined' ? scl_export_torneo_id : 0);
-		var temporada  = $tempSelect.length  ? $tempSelect.val()  || 0 : 0;
-		var grupo      = $grupoSelect.length ? $grupoSelect.val() || 0 : 0;
+	function scl_build_tabla_url() {
+		var torneo    = typeof scl_export_torneo_id !== 'undefined' ? scl_export_torneo_id : 0;
+		var temporada = $tempSelect.val() || 0;
+		var grupo     = $grupoSelect.length ? ($grupoSelect.val() || 0) : 0;
 		return scl_ajax.url
 			+ '?action=scl_get_export_url'
 			+ '&nonce='     + encodeURIComponent(scl_ajax.nonce)
@@ -1090,21 +1105,81 @@ jQuery(document).ready(function($) {
 			+ '&grupo='     + encodeURIComponent(grupo);
 	}
 
-	function scl_actualizar_preview() {
-		$.get(scl_build_export_url(), function(res) {
+	function scl_actualizar_tabla() {
+		$.get(scl_build_tabla_url(), function(res) {
 			if (res.success && res.data && res.data.url) {
 				$frame.attr('src', res.data.url);
-				$btnAbrir.attr('href', res.data.url);
+				if (activeTab === 'tabla') $btnAbrir.attr('href', res.data.url);
 			}
 		});
 	}
 
-	$btnActualizar.on('click', scl_actualizar_preview);
+	// Init "Abrir" href with current tabla URL
+	if ($frame.length) $btnAbrir.attr('href', $frame.attr('src') || '#');
 
-	var debounce_timer;
+	if ($btnActualizar.length) $btnActualizar.on('click', scl_actualizar_tabla);
+
+	var debounce_t;
 	$tempSelect.add($grupoSelect).on('change', function() {
-		clearTimeout(debounce_timer);
-		debounce_timer = setTimeout(scl_actualizar_preview, 400);
+		clearTimeout(debounce_t); debounce_t = setTimeout(scl_actualizar_tabla, 400);
+	});
+
+	// ── TAB STATS ────────────────────────────────────────────────
+	function scl_build_stats_url() {
+		var torneo    = typeof scl_export_torneo_id !== 'undefined' ? scl_export_torneo_id : 0;
+		var temporada = $('#scl_stats_temporada').val() || 0;
+		var tipo      = $('#scl_stats_tipo').val() || 'goleadores';
+		var limite    = $('#scl_stats_limite').val() || 10;
+		return scl_ajax.url
+			+ '?action=scl_get_export_url'
+			+ '&nonce='        + encodeURIComponent(scl_ajax.nonce)
+			+ '&torneo_id='    + encodeURIComponent(torneo)
+			+ '&temporada='    + encodeURIComponent(temporada)
+			+ '&tipo=stats'
+			+ '&stats_tipo='   + encodeURIComponent(tipo)
+			+ '&stats_limite=' + encodeURIComponent(limite);
+	}
+
+	function scl_actualizar_stats() {
+		$.get(scl_build_stats_url(), function(res) {
+			if (res.success && res.data && res.data.url) {
+				$('#scl_stats_frame').attr('src', res.data.url);
+				if (activeTab === 'stats') $btnAbrir.attr('href', res.data.url);
+			}
+		});
+	}
+
+	$('#scl_stats_actualizar').on('click', scl_actualizar_stats);
+	var debounce_s;
+	$('#scl_stats_temporada, #scl_stats_tipo, #scl_stats_limite').on('change', function() {
+		clearTimeout(debounce_s); debounce_s = setTimeout(scl_actualizar_stats, 400);
+	});
+
+	// ── TAB PARTIDOS ─────────────────────────────────────────────
+	function scl_build_partidos_url() {
+		var torneo    = typeof scl_export_torneo_id !== 'undefined' ? scl_export_torneo_id : 0;
+		var temporada = $('#scl_partidos_temporada').val() || 0;
+		return scl_ajax.url
+			+ '?action=scl_get_export_url'
+			+ '&nonce='     + encodeURIComponent(scl_ajax.nonce)
+			+ '&torneo_id=' + encodeURIComponent(torneo)
+			+ '&temporada=' + encodeURIComponent(temporada)
+			+ '&tipo=partidos';
+	}
+
+	function scl_actualizar_partidos() {
+		$.get(scl_build_partidos_url(), function(res) {
+			if (res.success && res.data && res.data.url) {
+				$('#scl_partidos_frame').attr('src', res.data.url);
+				if (activeTab === 'partidos') $btnAbrir.attr('href', res.data.url);
+			}
+		});
+	}
+
+	$('#scl_partidos_actualizar').on('click', scl_actualizar_partidos);
+	var debounce_p;
+	$('#scl_partidos_temporada').on('change', function() {
+		clearTimeout(debounce_p); debounce_p = setTimeout(scl_actualizar_partidos, 400);
 	});
 })(jQuery);
 

@@ -249,7 +249,7 @@ class Scl_Ajax {
 			wp_send_json_error( 'Torneo no válido.' );
 		}
 		
-		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -281,7 +281,7 @@ class Scl_Ajax {
 			wp_send_json_error( 'Torneo no válido.' );
 		}
 		
-		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -351,7 +351,7 @@ class Scl_Ajax {
 			wp_send_json_error( 'Torneo no válido.' );
 		}
 		
-		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -387,7 +387,7 @@ class Scl_Ajax {
 			wp_send_json_error( 'Grupo no válido.' );
 		}
 		
-		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -522,7 +522,7 @@ class Scl_Ajax {
 		if ( ! $post || 'scl_equipo' !== $post->post_type ) {
 			wp_send_json_error( 'Equipo no válido.' );
 		}
-		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -569,7 +569,7 @@ class Scl_Ajax {
 		if ( ! $post || 'scl_equipo' !== $post->post_type ) {
 			wp_send_json_error( 'Equipo no válido.' );
 		}
-		if ( $post->post_author != get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -809,7 +809,7 @@ class Scl_Ajax {
 
 		$torneo = get_post( $torneo_id );
 		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
-			|| ( (int) $torneo->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) ) {
+			|| ( (int) $torneo->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) ) {
 			wp_send_json_error( 'Torneo no válido.' );
 		}
 
@@ -991,7 +991,7 @@ class Scl_Ajax {
 		if ( ! $llave || 'scl_llave' !== $llave->post_type ) {
 			wp_send_json_error( 'Llave no válida.' );
 		}
-		if ( (int) $llave->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $llave->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos sobre esta llave.' );
 		}
 
@@ -1033,7 +1033,18 @@ class Scl_Ajax {
 			wp_send_json_error( 'Torneo no válido.' );
 		}
 
-		$url = Scl_Export::get_url( $torneo_id, $temporada_term_id, $grupo_id );
+		$tipo = sanitize_key( $_GET['tipo'] ?? 'tabla' );
+
+		if ( 'stats' === $tipo ) {
+			$stats_tipo   = sanitize_key( $_GET['stats_tipo']   ?? 'goleadores' );
+			$stats_limite = max( 5, min( 20, (int) ( $_GET['stats_limite'] ?? 10 ) ) );
+			$url = Scl_Export::get_url_stats( $torneo_id, $temporada_term_id, $stats_tipo, $stats_limite );
+		} elseif ( 'partidos' === $tipo ) {
+			$url = Scl_Export::get_url_partidos( $torneo_id, $temporada_term_id );
+		} else {
+			$url = Scl_Export::get_url( $torneo_id, $temporada_term_id, $grupo_id );
+		}
+
 		wp_send_json_success( [ 'url' => $url ] );
 	}
 
@@ -1058,7 +1069,7 @@ class Scl_Ajax {
 
 		$torneo = get_post( $torneo_id );
 		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
-			|| ( (int) $torneo->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) ) {
+			|| ( (int) $torneo->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) ) {
 			wp_send_json_error( 'Torneo no válido.' );
 		}
 
@@ -1221,7 +1232,7 @@ class Scl_Ajax {
 		if ( ! $post || 'scl_partido' !== $post->post_type ) {
 			wp_send_json_error( 'Partido no válido.' );
 		}
-		if ( (int) $post->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
@@ -1299,7 +1310,7 @@ class Scl_Ajax {
 		if ( ! $post || 'scl_partido' !== $post->post_type ) {
 			wp_send_json_error( 'Partido no válido.' );
 		}
-		if ( (int) $post->post_author !== get_current_user_id() && ! current_user_can( 'manage_options' ) ) {
+		if ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 

@@ -122,6 +122,8 @@ class Scl_Dashboard {
 			'estadisticas_partido'  => 'dashboard/estadisticas-partido.php',
 			'importar'              => 'dashboard/importador.php',
 			'exportar'              => 'dashboard/exportar.php',
+			'ver_tabla'             => 'dashboard/ver-tabla.php',
+			'ver_stats'             => 'dashboard/ver-stats.php',
 			'configuracion'         => 'dashboard/configuracion.php',
 			'perfil'                => 'dashboard/perfil.php',
 		];

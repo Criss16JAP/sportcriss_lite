@@ -21,7 +21,8 @@ if ( $es_editar ) {
 	$torneo_id = absint( $_GET['scl_id'] ?? 0 );
 	$post = get_post( $torneo_id );
 
-	if ( ! $post || 'scl_torneo' !== $post->post_type || $post->post_author != $usuario->ID ) {
+	if ( ! $post || 'scl_torneo' !== $post->post_type
+		|| ( (int) $post->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) ) ) {
 		echo '<div class="scl-flash scl-flash--error">Torneo no válido o sin permisos.</div>';
 		return;
 	}
