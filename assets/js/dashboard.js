@@ -1109,11 +1109,12 @@ jQuery(document).ready(function($) {
 })(jQuery);
 
 // ── Temporadas: cambio de estado activa/finalizada ────────────────────────
-window.scl_cambiar_estado_temporada = function(term_id, nuevo_estado) {
+window.scl_cambiar_estado_temporada = function(term_id, nuevo_estado, torneo_id) {
 	jQuery.post(scl_ajax.url, {
 		action:       'scl_cambiar_estado_temporada',
 		nonce:        scl_ajax.nonce,
 		term_id:      term_id,
+		torneo_id:    torneo_id || 0,
 		nuevo_estado: nuevo_estado,
 	}, function(res) {
 		if (res.success) {
@@ -1124,3 +1125,147 @@ window.scl_cambiar_estado_temporada = function(term_id, nuevo_estado) {
 		}
 	});
 };
+
+// ==========================================================================
+// FIX 1: Jugadores — inline form (lista de jugadores)
+// ==========================================================================
+
+window.scl_jugador_nuevo = function() {
+	var $ = jQuery;
+	$('#scl_jugador_id').val(0);
+	$('#scl_jugador_nombre').val('');
+	$('#scl_jugador_posicion').val('');
+	$('#scl_jugador_documento').val('');
+	$('#scl_jugador_foto_id').val(0);
+	$('#scl_jugador_foto_preview').html('<span class="scl-upload-icon">&#128247;</span><p>Click para subir (máx. 5MB)</p>');
+	$('#scl_jugador_form').slideDown(200);
+	$('#scl_jugador_nombre').focus();
+};
+
+window.scl_jugador_editar = function(id, nombre, posicion, documento, foto_id, foto_url) {
+	var $ = jQuery;
+	$('#scl_jugador_id').val(id);
+	$('#scl_jugador_nombre').val(nombre || '');
+	$('#scl_jugador_posicion').val(posicion || '');
+	$('#scl_jugador_documento').val(documento || '');
+	$('#scl_jugador_foto_id').val(foto_id || 0);
+	if (foto_url) {
+		$('#scl_jugador_foto_preview').html('<img src="' + foto_url + '" style="max-height:80px;border-radius:4px;" alt="">');
+	} else {
+		$('#scl_jugador_foto_preview').html('<span class="scl-upload-icon">&#128247;</span><p>Click para subir (máx. 5MB)</p>');
+	}
+	$('#scl_jugador_form').slideDown(200);
+	$('#scl_jugador_nombre').focus();
+};
+
+jQuery(document).ready(function($) {
+
+	$(document).on('click', '#scl_nuevo_jugador_btn', scl_jugador_nuevo);
+
+	// Cancelar form
+	$(document).on('click', '#scl_jugador_cancelar', function() {
+		$('#scl_jugador_form').slideUp(200);
+	});
+
+	// Editar jugador — delegado desde botones en lista
+	$(document).on('click', '.scl_editar_jugador_btn', function() {
+		var $b = $(this);
+		scl_jugador_editar(
+			$b.data('id'),
+			$b.data('nombre'),
+			$b.data('posicion'),
+			$b.data('documento'),
+			$b.data('foto-id'),
+			$b.attr('data-foto-url')
+		);
+	});
+
+	// Eliminar jugador — delegado
+	$(document).on('click', '.scl_eliminar_jugador_btn', function() {
+		var id     = $(this).data('id');
+		var nombre = $(this).data('nombre');
+		if (!confirm('¿Eliminar al jugador "' + nombre + '"?')) return;
+		$.post(scl_ajax.url, {
+			action:     'scl_eliminar_jugador',
+			nonce:      scl_ajax.nonce,
+			jugador_id: id,
+		}, function(res) {
+			if (res.success) {
+				$('#scl_jugador_item_' + id).fadeOut(300, function() { $(this).remove(); });
+				scl_flash('Jugador eliminado.');
+			} else {
+				scl_flash(res.data || 'No se pudo eliminar.', 'error');
+			}
+		});
+	});
+
+	// Guardar jugador (crear o editar)
+	$(document).on('click', '#scl_jugador_guardar', function() {
+		var jugador_id = parseInt($('#scl_jugador_id').val()) || 0;
+		var nombre     = $('#scl_jugador_nombre').val().trim();
+		if (!nombre) {
+			scl_flash('El nombre es obligatorio.', 'error');
+			$('#scl_jugador_nombre').focus();
+			return;
+		}
+		var data = {
+			action:     jugador_id ? 'scl_editar_jugador' : 'scl_crear_jugador',
+			nonce:      scl_ajax.nonce,
+			jugador_id: jugador_id,
+			nombre:     nombre,
+			posicion:   $('#scl_jugador_posicion').val().trim(),
+			documento:  $('#scl_jugador_documento').val().trim(),
+			foto_id:    parseInt($('#scl_jugador_foto_id').val()) || 0,
+		};
+		var $btn = $(this);
+		$btn.prop('disabled', true).text('Guardando...');
+		$.post(scl_ajax.url, data, function(res) {
+			if (res.success) {
+				$('#scl_jugador_form').slideUp(200);
+				sessionStorage.setItem('scl_flash', 'Jugador guardado correctamente.');
+				window.location.reload();
+			} else {
+				scl_flash(res.data || 'Error al guardar.', 'error');
+				$btn.prop('disabled', false).text('Guardar');
+			}
+		}).fail(function() {
+			scl_flash('Error de conexión.', 'error');
+			$btn.prop('disabled', false).text('Guardar');
+		});
+	});
+
+	// Foto uploader del jugador
+	$(document).on('click', '#scl_jugador_foto_uploader', function() {
+		$('#scl_jugador_foto_file').trigger('click');
+	});
+
+	$(document).on('change', '#scl_jugador_foto_file', function() {
+		var file = this.files[0];
+		if (!file) return;
+		if (file.size > 5 * 1024 * 1024) {
+			scl_flash('La foto no puede superar 5MB.', 'error');
+			return;
+		}
+		var formData = new FormData();
+		formData.append('action', 'scl_subir_foto_jugador');
+		formData.append('nonce', scl_ajax.nonce);
+		formData.append('foto', file);
+		$('#scl_jugador_foto_preview').html('<p style="text-align:center;padding:1rem;">Subiendo...</p>');
+		$.ajax({
+			url: scl_ajax.url, type: 'POST',
+			data: formData, processData: false, contentType: false,
+			success: function(res) {
+				if (res.success) {
+					$('#scl_jugador_foto_id').val(res.data.attachment_id);
+					$('#scl_jugador_foto_preview').html('<img src="' + res.data.url + '" style="max-height:80px;border-radius:4px;" alt="">');
+				} else {
+					scl_flash(res.data || 'Error al subir.', 'error');
+					$('#scl_jugador_foto_preview').html('<span class="scl-upload-icon">&#128247;</span><p>Click para subir (máx. 5MB)</p>');
+				}
+			},
+			error: function() {
+				scl_flash('Error de conexión.', 'error');
+			}
+		});
+	});
+});

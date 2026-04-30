@@ -81,6 +81,18 @@ body.page-template-default .scl-dashboard {
 	color: #fff;
 }
 
+/* Nav separators: hidden on desktop, section headers on mobile */
+.scl-nav__separator {
+	font-size: 0.65rem;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: rgba(255,255,255,0.3);
+	padding: 0.25rem 0.875rem;
+	pointer-events: none;
+	white-space: nowrap;
+	display: none; /* hidden on desktop — all links flat */
+}
+
 .scl-nav__user {
 	display: flex;
 	align-items: center;
@@ -392,6 +404,13 @@ body.page-template-default .scl-dashboard {
 	}
 	.scl-nav__links.open { display: flex; }
 	.scl-nav__links a { padding: 0.75rem 1rem; }
+	.scl-nav__separator {
+		display: block;
+		padding: 0.75rem 1rem 0.25rem;
+		margin-top: 0.5rem;
+		border-top: 1px solid rgba(255,255,255,0.08);
+	}
+	.scl-nav__separator:first-child { border-top: none; margin-top: 0; }
 
 	.scl-nav__user-name { display: none; }
 	.scl-nav__inner { padding: 0 1rem; }
@@ -1161,4 +1180,39 @@ body.scl-drawer-active { overflow: hidden; }
 	letter-spacing: 0.03em;
 	margin-right: 6px;
 	vertical-align: middle;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Tabs del importador (Fix 2)
+   ═══════════════════════════════════════════════════════════ */
+
+.scl-tabs {
+	display: flex;
+	gap: 0.25rem;
+	border-bottom: 2px solid var(--scl-border);
+	margin-bottom: 1.5rem;
+}
+
+.scl-tab {
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	margin-bottom: -2px;
+	padding: 0.625rem 1.25rem;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: rgba(44,62,80,0.55);
+	cursor: pointer;
+	transition: color 0.15s, border-color 0.15s;
+	border-radius: 6px 6px 0 0;
+}
+
+.scl-tab:hover {
+	color: var(--scl-text);
+	background: rgba(0,0,0,0.03);
+}
+
+.scl-tab--active {
+	color: var(--scl-primary);
+	border-bottom-color: var(--scl-primary);
 }

@@ -110,6 +110,31 @@ function scl_get_autor_efectivo(): int {
 	return get_current_user_id();
 }
 
+/**
+ * Fix 3 — Estado de temporada POR torneo.
+ * Guardado como post_meta del torneo, no como term_meta global.
+ * Esto permite que "Apertura 2025" sea activa en Torneo A y finalizada en Torneo B.
+ *
+ * @param int $torneo_id
+ * @param int $temporada_term_id
+ * @return string 'activa' | 'finalizada'
+ */
+function scl_get_estado_temporada( int $torneo_id, int $temporada_term_id ): string {
+	$estado = get_post_meta( $torneo_id, 'scl_temporada_estado_' . $temporada_term_id, true );
+	return $estado ?: 'activa';
+}
+
+/**
+ * Fix 3 — Guarda el estado de una temporada en el contexto de un torneo concreto.
+ *
+ * @param int    $torneo_id
+ * @param int    $temporada_term_id
+ * @param string $estado 'activa' | 'finalizada'
+ */
+function scl_set_estado_temporada( int $torneo_id, int $temporada_term_id, string $estado ): void {
+	update_post_meta( $torneo_id, 'scl_temporada_estado_' . $temporada_term_id, $estado );
+}
+
 // scl_organizador puede crear y asignar términos pero NO eliminarlos
 add_filter( 'map_meta_cap', function( $caps, $cap, $user_id, $args ) {
 	if ( in_array( $cap, [ 'delete_term', 'manage_terms' ], true ) ) {

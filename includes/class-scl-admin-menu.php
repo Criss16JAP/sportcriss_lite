@@ -183,10 +183,11 @@ class Scl_Admin_Menu {
 
 		// Guardar si viene el form
 		if ( isset( $_POST['scl_config_nonce'] )
-			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_config_nonce'] ) ), 'scl_guardar_config' ) ) {
-			update_option( 'scl_portal_nombre',       sanitize_text_field( wp_unslash( $_POST['scl_portal_nombre'] ?? '' ) ) );
-			update_option( 'scl_importador_limite',   absint( $_POST['scl_importador_limite'] ?? 500 ) );
-			update_option( 'scl_tabla_transient_ttl', absint( $_POST['scl_tabla_transient_ttl'] ?? 5 ) );
+				&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['scl_config_nonce'] ) ), 'scl_guardar_config' ) ) {
+			update_option( 'scl_portal_nombre',         sanitize_text_field( wp_unslash( $_POST['scl_portal_nombre'] ?? '' ) ) );
+			update_option( 'scl_importador_limite',     absint( $_POST['scl_importador_limite'] ?? 500 ) );
+			update_option( 'scl_tabla_transient_ttl',   absint( $_POST['scl_tabla_transient_ttl'] ?? 5 ) );
+			update_option( 'scl_audit_retension_dias',  absint( $_POST['scl_audit_retension_dias'] ?? 90 ) );
 			add_settings_error( 'scl_config', 'guardado', 'Configuración guardada.', 'success' );
 		}
 
@@ -236,7 +237,20 @@ class Scl_Admin_Menu {
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Datos del sistema', 'sportcriss-lite' ); ?></h2>
+			<h2><?php esc_html_e( 'Auditoría', 'sportcriss-lite' ); ?></h2>
+			<table class="form-table">
+				<tr>
+					<th><label for="scl_audit_retension_dias"><?php esc_html_e( 'Retención del log de auditoría (días)', 'sportcriss-lite' ); ?></label></th>
+					<td>
+						<input type="number" name="scl_audit_retension_dias" id="scl_audit_retension_dias"
+							class="small-text" min="7" max="365"
+							value="<?php echo esc_attr( get_option( 'scl_audit_retension_dias', 90 ) ); ?>">
+						<p class="description"><?php esc_html_e( 'Registros con más de este número de días se eliminan automáticamente cada noche via WP-Cron. Default: 90.', 'sportcriss-lite' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
+			<h2><?php esc_html_e( 'Datos del sistema', 'sportcriss-lite' ); ?></h2>
 				<table class="form-table">
 					<tr>
 						<th><?php esc_html_e( 'Versión del plugin', 'sportcriss-lite' ); ?></th>

@@ -97,7 +97,7 @@ class Scl_Dashboard {
 	private function dispatch( string $ruta, int $id, string $accion ): void {
 		// Rutas bloqueadas para colaboradores
 		if ( scl_es_colaborador() ) {
-			$rutas_permitidas_colaborador = [ 'home', 'partidos' ];
+			$rutas_permitidas_colaborador = [ 'home', 'partidos', 'perfil' ];
 			if ( ! in_array( $ruta, $rutas_permitidas_colaborador, true ) ) {
 				include SCL_PATH . 'templates/dashboard/acceso-denegado.php';
 				return;
@@ -123,6 +123,7 @@ class Scl_Dashboard {
 			'importar'              => 'dashboard/importador.php',
 			'exportar'              => 'dashboard/exportar.php',
 			'configuracion'         => 'dashboard/configuracion.php',
+			'perfil'                => 'dashboard/perfil.php',
 		];
 
 		$template = $templates[ $ruta ] ?? $templates['home'];
@@ -157,18 +158,32 @@ class Scl_Dashboard {
 
 				<ul class="scl-nav__links" id="scl_nav_links">
 					<li><a href="<?php echo esc_url( $home_url ); ?>"><?php esc_html_e( 'Inicio', 'sportcriss-lite' ); ?></a></li>
+
 					<?php if ( ! $es_colaborador ) : ?>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'torneos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos', $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'temporadas', $home_url ) ); ?>"><?php esc_html_e( 'Temporadas', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'llaves', $home_url ) ); ?>"><?php esc_html_e( 'Llaves', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'grupos', $home_url ) ); ?>"><?php esc_html_e( 'Grupos', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'jugadores', $home_url ) ); ?>"><?php esc_html_e( 'Jugadores', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"><?php esc_html_e( 'Importar CSV', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'exportar', $home_url ) ); ?>"><?php esc_html_e( 'Exportar', 'sportcriss-lite' ); ?></a></li>
-						<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'configuracion', $home_url ) ); ?>"><?php esc_html_e( 'Configuración', 'sportcriss-lite' ); ?></a></li>
-					<?php endif; ?>
+					<li class="scl-nav__separator" aria-hidden="true"><?php esc_html_e( 'Torneos', 'sportcriss-lite' ); ?></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'torneos',    $home_url ) ); ?>"><?php esc_html_e( 'Mis Torneos', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'grupos',     $home_url ) ); ?>"><?php esc_html_e( 'Grupos',      'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'temporadas', $home_url ) ); ?>"><?php esc_html_e( 'Temporadas',  'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'llaves',     $home_url ) ); ?>"><?php esc_html_e( 'Llaves',      'sportcriss-lite' ); ?></a></li>
+
+					<li class="scl-nav__separator" aria-hidden="true"><?php esc_html_e( 'Datos', 'sportcriss-lite' ); ?></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'equipos',   $home_url ) ); ?>"><?php esc_html_e( 'Mis Equipos', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'jugadores', $home_url ) ); ?>"><?php esc_html_e( 'Jugadores',   'sportcriss-lite' ); ?></a></li>
+
+					<li class="scl-nav__separator" aria-hidden="true"><?php esc_html_e( 'Operaciones', 'sportcriss-lite' ); ?></li>
 					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'partidos', $home_url ) ); ?>"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'importar', $home_url ) ); ?>"><?php esc_html_e( 'Importar',  'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'exportar', $home_url ) ); ?>"><?php esc_html_e( 'Exportar',  'sportcriss-lite' ); ?></a></li>
+
+					<li class="scl-nav__separator" aria-hidden="true"><?php esc_html_e( 'Cuenta', 'sportcriss-lite' ); ?></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'perfil',       $home_url ) ); ?>"><?php esc_html_e( 'Mi Perfil',    'sportcriss-lite' ); ?></a></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'configuracion', $home_url ) ); ?>"><?php esc_html_e( 'Configuración', 'sportcriss-lite' ); ?></a></li>
+					<?php else : ?>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'partidos', $home_url ) ); ?>"><?php esc_html_e( 'Partidos', 'sportcriss-lite' ); ?></a></li>
+
+					<li class="scl-nav__separator" aria-hidden="true"><?php esc_html_e( 'Cuenta', 'sportcriss-lite' ); ?></li>
+					<li><a href="<?php echo esc_url( add_query_arg( 'scl_ruta', 'perfil', $home_url ) ); ?>"><?php esc_html_e( 'Mi Perfil', 'sportcriss-lite' ); ?></a></li>
+					<?php endif; ?>
 				</ul>
 
 				<div class="scl-nav__user">

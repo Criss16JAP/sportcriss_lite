@@ -52,10 +52,14 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_crear_llave',            [ $this, 'ajax_crear_llave' ] );
 		$loader->add_action( 'wp_ajax_scl_confirmar_ganador_llave',[ $this, 'ajax_confirmar_ganador_llave' ] );
 		$loader->add_action( 'wp_ajax_scl_eliminar_llave',         [ $this, 'ajax_eliminar_llave' ] );
-		// Sprint 8: Importador CSV
+		// Sprint 8: Importador CSV partidos
 		$loader->add_action( 'wp_ajax_scl_validar_csv',           [ $this, 'ajax_validar_csv' ] );
 		$loader->add_action( 'wp_ajax_scl_procesar_importacion',  [ $this, 'ajax_procesar_importacion' ] );
 		$loader->add_action( 'wp_ajax_scl_descargar_plantilla',   [ $this, 'ajax_descargar_plantilla' ] );
+		// Fix 2: Importador CSV jugadores
+		$loader->add_action( 'wp_ajax_scl_validar_csv_jugadores',          [ $this, 'ajax_validar_csv_jugadores' ] );
+		$loader->add_action( 'wp_ajax_scl_procesar_importacion_jugadores', [ $this, 'ajax_procesar_importacion_jugadores' ] );
+		$loader->add_action( 'wp_ajax_scl_descargar_plantilla_jugadores',  [ $this, 'ajax_descargar_plantilla_jugadores' ] );
 		// Sprint 9: Exportación Visual
 		$loader->add_action( 'wp_ajax_scl_get_export_url', [ $this, 'ajax_get_export_url' ] );
 		// Sprint 10B: Tiers de anunciantes
@@ -74,6 +78,11 @@ class Scl_Ajax {
 		$loader->add_action( 'wp_ajax_scl_guardar_estadisticas_partido', [ $this, 'ajax_guardar_estadisticas_partido' ] );
 		// Temporadas: cambiar estado activa/finalizada desde el dashboard frontend
 		$loader->add_action( 'wp_ajax_scl_cambiar_estado_temporada', [ $this, 'ajax_cambiar_estado_temporada' ] );
+		// Fix 6: Perfil de usuario
+		$loader->add_action( 'wp_ajax_scl_actualizar_perfil',     [ $this, 'ajax_actualizar_perfil' ] );
+		$loader->add_action( 'wp_ajax_scl_enviar_codigo_email',   [ $this, 'ajax_enviar_codigo_email' ] );
+		$loader->add_action( 'wp_ajax_scl_verificar_codigo_email',[ $this, 'ajax_verificar_codigo_email' ] );
+		$loader->add_action( 'wp_ajax_scl_cambiar_contrasena',    [ $this, 'ajax_cambiar_contrasena' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -217,6 +226,11 @@ class Scl_Ajax {
 
 		$this->guardar_metas_torneo( $post_id );
 
+		scl_audit_log( 'torneo_creado', 'scl_torneo', $post_id, [
+			'nombre' => $titulo,
+			'siglas' => strtoupper( sanitize_text_field( wp_unslash( $_POST['siglas'] ?? '' ) ) ),
+		] );
+
 		wp_send_json_success( [
 			'success'    => true,
 			'torneo_id'  => $post_id,
@@ -249,6 +263,10 @@ class Scl_Ajax {
 
 		$this->guardar_metas_torneo( $torneo_id );
 
+		scl_audit_log( 'torneo_editado', 'scl_torneo', $torneo_id, [
+			'nombre' => $titulo,
+		] );
+
 		wp_send_json_success( [ 'success' => true ] );
 	}
 
@@ -267,7 +285,13 @@ class Scl_Ajax {
 			wp_send_json_error( 'Sin permisos.' );
 		}
 
+		$nombre_torneo = $post->post_title;
 		wp_trash_post( $torneo_id );
+
+		scl_audit_log( 'torneo_eliminado', 'scl_torneo', $torneo_id, [
+			'nombre' => $nombre_torneo,
+		] );
+
 		wp_send_json_success( [ 'success' => true ] );
 	}
 
@@ -480,6 +504,11 @@ class Scl_Ajax {
 			update_post_meta( $equipo_id, 'scl_equipo_incompleto', '1' );
 		}
 
+		scl_audit_log( 'equipo_creado', 'scl_equipo', $equipo_id, [
+			'nombre' => $nombre,
+			'zona'   => sanitize_text_field( wp_unslash( $_POST['zona'] ?? '' ) ),
+		] );
+
 		wp_send_json_success( [ 'equipo_id' => $equipo_id ] );
 	}
 
@@ -522,6 +551,11 @@ class Scl_Ajax {
 			}
 		}
 
+		scl_audit_log( 'equipo_editado', 'scl_equipo', $equipo_id, [
+			'nombre' => $nombre,
+			'zona'   => $zona,
+		] );
+
 		wp_send_json_success( [ 'success' => true ] );
 	}
 
@@ -555,7 +589,11 @@ class Scl_Ajax {
 			wp_send_json_error( 'No puedes eliminar un equipo que tiene partidos asignados.' );
 		}
 
+		$nombre = $post->post_title;
 		wp_trash_post( $equipo_id );
+
+		scl_audit_log( 'equipo_eliminado', 'scl_equipo', $equipo_id, [ 'nombre' => $nombre ] );
+
 		wp_send_json_success( [ 'success' => true ] );
 	}
 
@@ -688,6 +726,11 @@ class Scl_Ajax {
 		// Enviar credenciales por email
 		scl_enviar_email_colaborador( $user_id, $email, $nombre, $apellido, $password );
 
+		scl_audit_log( 'colaborador_agregado', 'user', $user_id, [
+			'nombre' => $nombre . ' ' . $apellido,
+			'email'  => $email,
+		] );
+
 		wp_send_json_success( [
 			'user_id'      => $user_id,
 			'display_name' => $nombre . ' ' . $apellido,
@@ -707,9 +750,16 @@ class Scl_Ajax {
 			wp_send_json_error( 'No puedes revocar este colaborador.' );
 		}
 
+		$colab_data = get_userdata( $colaborador_id );
+		$colab_nombre = $colab_data ? $colab_data->display_name : "ID {$colaborador_id}";
+
 		// Eliminar la cuenta del colaborador (fue creada automáticamente)
 		require_once ABSPATH . 'wp-admin/includes/user.php';
 		wp_delete_user( $colaborador_id );
+
+		scl_audit_log( 'colaborador_revocado', 'user', $colaborador_id, [
+			'nombre' => $colab_nombre,
+		] );
 
 		wp_send_json_success();
 	}
@@ -798,6 +848,13 @@ class Scl_Ajax {
 			);
 			update_post_meta( $llave_id, 'scl_llave_partido_vuelta_id', $partido_vuelta_id );
 		}
+
+		scl_audit_log( 'llave_creada', 'scl_llave', $llave_id, [
+			'fase'     => $nombre_fase,
+			'equipo_a' => get_the_title( $equipo_a_id ),
+			'equipo_b' => get_the_title( $equipo_b_id ),
+			'formato'  => $es_doble ? 'ida_y_vuelta' : 'partido_unico',
+		] );
 
 		wp_send_json_success( [ 'llave_id' => $llave_id ] );
 	}
@@ -910,6 +967,13 @@ class Scl_Ajax {
 
 		update_post_meta( $llave_id, 'scl_llave_ganador_id', $ganador_id );
 		update_post_meta( $llave_id, 'scl_llave_estado',     'resuelta' );
+
+		$detalle_ganador = [ 'ganador' => get_the_title( $ganador_id ) ];
+		if ( 'requiere_penales' === $estado_llave && isset( $pen_a, $pen_b ) ) {
+			$detalle_ganador['penales_a'] = $pen_a;
+			$detalle_ganador['penales_b'] = $pen_b;
+		}
+		scl_audit_log( 'ganador_confirmado', 'scl_llave', $llave_id, $detalle_ganador );
 
 		wp_send_json_success( [
 			'ganador'    => get_the_title( $ganador_id ),
@@ -1067,6 +1131,13 @@ class Scl_Ajax {
 			'post_status' => 'publish',
 		] );
 
+		scl_audit_log( 'partido_creado', 'scl_partido', $partido_id, [
+			'torneo'    => get_the_title( $torneo_id ),
+			'temporada' => $temporada_term_id,
+			'local'     => get_the_title( $local_id ),
+			'visita'    => get_the_title( $visita_id ),
+		] );
+
 		wp_send_json_success( [ 'partido_id' => $partido_id ] );
 	}
 
@@ -1125,6 +1196,13 @@ class Scl_Ajax {
 		$gl           = get_post_meta( $partido_id, 'scl_partido_goles_local',  true );
 		$gv           = get_post_meta( $partido_id, 'scl_partido_goles_visita', true );
 		$marcador     = ( $gl !== '' && $gv !== '' ) ? "{$gl} - {$gv}" : '— vs —';
+
+		scl_audit_log( 'resultado_guardado', 'scl_partido', $partido_id, [
+			'estado'   => $estado,
+			'marcador' => $marcador,
+			'local'    => get_the_title( $local_id ),
+			'visita'   => get_the_title( $visita_id ),
+		] );
 
 		wp_send_json_success( [
 			'marcador' => $marcador,
@@ -1238,6 +1316,7 @@ class Scl_Ajax {
 		$temporada_term_id = ( ! is_wp_error( $terms ) && ! empty( $terms ) )
 							 ? (int) $terms[0]->term_id : 0;
 
+		$titulo_partido = $post->post_title;
 		wp_trash_post( $partido_id );
 
 		// Recalcular tabla si el partido eliminado afectaba la posición
@@ -1245,6 +1324,10 @@ class Scl_Ajax {
 			&& $torneo_id && $temporada_term_id ) {
 			( new Scl_Engine() )->recalcular_tabla( $torneo_id, $temporada_term_id );
 		}
+
+		scl_audit_log( 'partido_eliminado', 'scl_partido', $partido_id, [
+			'titulo' => $titulo_partido,
+		] );
 
 		wp_send_json_success( [ 'success' => true ] );
 	}
@@ -1297,6 +1380,11 @@ class Scl_Ajax {
 			wp_send_json_error( $resultado['error'] );
 		}
 
+		scl_audit_log( 'importacion_csv', 'importacion', 0, [
+			'filas_creadas' => $resultado['creados']  ?? 0,
+			'errores'       => $resultado['errores']  ?? 0,
+		] );
+
 		wp_send_json_success( $resultado );
 	}
 
@@ -1313,6 +1401,272 @@ class Scl_Ajax {
 
 		header( 'Content-Type: text/csv; charset=UTF-8' );
 		header( 'Content-Disposition: attachment; filename="plantilla-partidos.csv"' );
+		header( 'Content-Length: ' . ( strlen( $bom ) + strlen( $csv ) ) );
+		header( 'Cache-Control: no-cache, no-store, must-revalidate' );
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		echo $bom . $csv;
+		exit;
+	}
+
+	// -----------------------------------------------------------------------
+	// Fix 2: Importador de Jugadores e Inscripciones
+	// -----------------------------------------------------------------------
+
+	private function obtener_filas_jugadores_transient( int $user_id ) {
+		$filas = get_transient( 'scl_csv_jugadores_' . $user_id );
+		if ( false === $filas ) {
+			return new WP_Error( 'transient_expired', 'La sesión de importación expiró. Sube el archivo de nuevo.' );
+		}
+		return $filas;
+	}
+
+	public function ajax_validar_csv_jugadores(): void {
+		$this->verificar_permisos();
+		if ( scl_es_colaborador() ) wp_send_json_error( 'Los colaboradores no pueden importar.' );
+
+		if ( empty( $_FILES['csv_file'] ) || UPLOAD_ERR_OK !== (int) $_FILES['csv_file']['error'] ) {
+			wp_send_json_error( 'No se ha recibido ningún archivo.' );
+		}
+		if ( (int) $_FILES['csv_file']['size'] > 5 * 1024 * 1024 ) {
+			wp_send_json_error( 'El archivo no puede superar 5 MB.' );
+		}
+		$ext = strtolower( pathinfo( sanitize_file_name( $_FILES['csv_file']['name'] ), PATHINFO_EXTENSION ) );
+		if ( 'csv' !== $ext ) wp_send_json_error( 'Solo se aceptan archivos .csv.' );
+
+		$columnas_req = [ 'nombre', 'apellido', 'posicion', 'equipo', 'torneo', 'temporada' ];
+
+		$tmp    = $_FILES['csv_file']['tmp_name'];
+		$handle = fopen( $tmp, 'r' );
+		if ( ! $handle ) wp_send_json_error( 'No se pudo abrir el archivo.' );
+
+		$bom = fread( $handle, 3 );
+		if ( "\xef\xbb\xbf" !== $bom ) fseek( $handle, 0 );
+
+		$headers = fgetcsv( $handle );
+		if ( ! $headers ) { fclose( $handle ); wp_send_json_error( 'El archivo CSV está vacío.' ); }
+
+		$headers = array_map( fn( $h ) => strtolower( trim( $h ) ), $headers );
+		$faltantes = array_diff( $columnas_req, $headers );
+		if ( ! empty( $faltantes ) ) {
+			fclose( $handle );
+			wp_send_json_error( 'Columnas faltantes: ' . implode( ', ', $faltantes ) );
+		}
+
+		$user_id    = get_current_user_id();
+		$autor_ef   = scl_get_autor_efectivo();
+		$filas      = [];
+		$errores    = [];
+		$preview    = [];
+		$jug_nuevos = [];
+		$eq_nuevos  = [];
+		$inscr_a_crear = 0;
+
+		while ( ( $row = fgetcsv( $handle ) ) !== false ) {
+			if ( count( $filas ) >= Scl_Importer::MAX_FILAS ) { $errores[] = 'Límite de filas alcanzado.'; break; }
+			$data = array_combine( $headers, array_map( 'trim', $row ) );
+			$fila = [
+				'nombre'    => $data['nombre']    ?? '',
+				'apellido'  => $data['apellido']  ?? '',
+				'posicion'  => $data['posicion']  ?? '',
+				'equipo'    => $data['equipo']    ?? '',
+				'torneo'    => $data['torneo']    ?? '',
+				'temporada' => $data['temporada'] ?? '',
+				'valid'     => true,
+				'error'     => '',
+			];
+
+			$num = count( $filas ) + 2;
+
+			if ( ! $fila['nombre'] || ! $fila['apellido'] ) {
+				$fila['valid'] = false;
+				$fila['error'] = "Fila {$num}: nombre y apellido son obligatorios.";
+				$errores[]     = $fila['error'];
+			} elseif ( ! $fila['equipo'] ) {
+				$fila['valid'] = false;
+				$fila['error'] = "Fila {$num}: equipo es obligatorio.";
+				$errores[]     = $fila['error'];
+			} elseif ( $fila['torneo'] && ! $fila['temporada'] ) {
+				$fila['valid'] = false;
+				$fila['error'] = "Fila {$num}: si hay torneo, la temporada es obligatoria.";
+				$errores[]     = $fila['error'];
+			} elseif ( $fila['torneo'] ) {
+				$torneo_post = get_posts( [
+					'post_type'   => 'scl_torneo',
+					'author'      => $autor_ef,
+					'post_status' => 'publish',
+					'title'       => $fila['torneo'],
+					'numberposts' => 1,
+				] );
+				if ( empty( $torneo_post ) ) {
+					$fila['valid'] = false;
+					$fila['error'] = "Fila {$num}: torneo «{$fila['torneo']}» no encontrado.";
+					$errores[]     = $fila['error'];
+				} else {
+					$inscr_a_crear++;
+				}
+			}
+
+			if ( $fila['valid'] ) {
+				$eq_exists  = get_posts( [ 'post_type' => 'scl_equipo', 'author' => $autor_ef, 'post_status' => 'publish', 'title' => $fila['equipo'], 'numberposts' => 1 ] );
+				$jug_exists = get_posts( [
+					'post_type'   => 'scl_jugador',
+					'author'      => $autor_ef,
+					'post_status' => 'publish',
+					'numberposts' => 1,
+					'meta_query'  => [ [ 'key' => '_scl_jug_nombre_completo', 'value' => $fila['nombre'] . ' ' . $fila['apellido'] ] ],
+				] );
+				if ( empty( $eq_exists ) && ! in_array( $fila['equipo'], $eq_nuevos, true ) ) $eq_nuevos[] = $fila['equipo'];
+				if ( empty( $jug_exists ) ) {
+					$key = $fila['nombre'] . ' ' . $fila['apellido'];
+					if ( ! in_array( $key, $jug_nuevos, true ) ) $jug_nuevos[] = $key;
+				}
+			}
+
+			if ( count( $preview ) < 5 ) $preview[] = $fila;
+			$filas[] = $fila;
+		}
+		fclose( $handle );
+
+		$validas = count( array_filter( $filas, fn( $f ) => $f['valid'] ) );
+		set_transient( 'scl_csv_jugadores_' . $user_id, $filas, 30 * MINUTE_IN_SECONDS );
+
+		wp_send_json_success( [
+			'total'              => count( $filas ),
+			'filas_validas'      => $validas,
+			'filas_con_error'    => count( $filas ) - $validas,
+			'jugadores_nuevos'   => $jug_nuevos,
+			'equipos_nuevos'     => $eq_nuevos,
+			'inscripciones_a_crear' => $inscr_a_crear,
+			'errores'            => $errores,
+			'preview'            => $preview,
+		] );
+	}
+
+	public function ajax_procesar_importacion_jugadores(): void {
+		$this->verificar_permisos();
+		if ( scl_es_colaborador() ) wp_send_json_error( 'Los colaboradores no pueden importar.' );
+
+		$user_id  = get_current_user_id();
+		$autor_ef = scl_get_autor_efectivo();
+
+		$filas = $this->obtener_filas_jugadores_transient( $user_id );
+		if ( is_wp_error( $filas ) ) wp_send_json_error( $filas->get_error_message() );
+
+		global $wpdb;
+		$jugadores_creados   = 0;
+		$inscripciones_creadas = 0;
+		$omitidos            = 0;
+		$errores             = [];
+
+		foreach ( $filas as $i => $fila ) {
+			if ( ! $fila['valid'] ) { $omitidos++; continue; }
+
+			$num        = $i + 2;
+			$nombre     = sanitize_text_field( $fila['nombre'] );
+			$apellido   = sanitize_text_field( $fila['apellido'] );
+			$posicion   = sanitize_text_field( $fila['posicion'] );
+			$nombre_eq  = sanitize_text_field( $fila['equipo'] );
+			$nombre_tor = sanitize_text_field( $fila['torneo'] );
+			$nombre_temp = sanitize_text_field( $fila['temporada'] );
+			$nombre_completo = $nombre . ' ' . $apellido;
+
+			// Find or create equipo
+			$equipo_posts = get_posts( [ 'post_type' => 'scl_equipo', 'author' => $autor_ef, 'post_status' => 'publish', 'title' => $nombre_eq, 'numberposts' => 1 ] );
+			if ( ! empty( $equipo_posts ) ) {
+				$equipo_id = $equipo_posts[0]->ID;
+			} else {
+				$equipo_id = wp_insert_post( [ 'post_type' => 'scl_equipo', 'post_title' => $nombre_eq, 'post_status' => 'publish', 'post_author' => $autor_ef ] );
+				if ( is_wp_error( $equipo_id ) ) { $errores[] = "Fila {$num}: no se pudo crear el equipo."; $omitidos++; continue; }
+				update_post_meta( $equipo_id, 'scl_equipo_incompleto', true );
+			}
+
+			// Find or create jugador (match by nombre completo + equipo del organizador)
+			$jugador_posts = get_posts( [
+				'post_type'   => 'scl_jugador',
+				'author'      => $autor_ef,
+				'post_status' => 'publish',
+				'numberposts' => 1,
+				'meta_query'  => [ [ 'key' => '_scl_jug_nombre_completo', 'value' => $nombre_completo ] ],
+			] );
+			if ( ! empty( $jugador_posts ) ) {
+				$jugador_id = $jugador_posts[0]->ID;
+			} else {
+				$jugador_id = wp_insert_post( [ 'post_type' => 'scl_jugador', 'post_title' => $nombre_completo, 'post_status' => 'publish', 'post_author' => $autor_ef ] );
+				if ( is_wp_error( $jugador_id ) ) { $errores[] = "Fila {$num}: no se pudo crear el jugador."; $omitidos++; continue; }
+				update_post_meta( $jugador_id, 'scl_jugador_posicion', $posicion );
+				update_post_meta( $jugador_id, '_scl_jug_nombre_completo', $nombre_completo );
+				$jugadores_creados++;
+			}
+
+			// If torneo + temporada → create inscription
+			if ( $nombre_tor && $nombre_temp ) {
+				$torneo_posts = get_posts( [ 'post_type' => 'scl_torneo', 'author' => $autor_ef, 'post_status' => 'publish', 'title' => $nombre_tor, 'numberposts' => 1 ] );
+				if ( empty( $torneo_posts ) ) { $errores[] = "Fila {$num}: torneo «{$nombre_tor}» no encontrado."; $omitidos++; continue; }
+				$torneo_id = $torneo_posts[0]->ID;
+
+				$temp_term = get_term_by( 'name', $nombre_temp, 'scl_temporada' );
+				if ( ! $temp_term ) {
+					$inserted = wp_insert_term( $nombre_temp, 'scl_temporada' );
+					$temp_term_id = is_wp_error( $inserted ) ? 0 : $inserted['term_id'];
+				} else {
+					$temp_term_id = $temp_term->term_id;
+				}
+
+				if ( ! $temp_term_id ) { $errores[] = "Fila {$num}: no se pudo crear la temporada."; $omitidos++; continue; }
+
+				$exists = $wpdb->get_var( $wpdb->prepare(
+					"SELECT id FROM {$wpdb->prefix}scl_inscripciones WHERE jugador_id=%d AND torneo_id=%d AND temporada_term_id=%d LIMIT 1",
+					$jugador_id, $torneo_id, $temp_term_id
+				) );
+
+				if ( ! $exists ) {
+					$wpdb->insert( "{$wpdb->prefix}scl_inscripciones", [
+						'jugador_id'       => $jugador_id,
+						'equipo_id'        => $equipo_id,
+						'torneo_id'        => $torneo_id,
+						'temporada_term_id' => $temp_term_id,
+						'organizador_id'   => $autor_ef,
+						'activo'           => 1,
+						'created_at'       => current_time( 'mysql' ),
+					], [ '%d', '%d', '%d', '%d', '%d', '%d', '%s' ] );
+					if ( $wpdb->last_error ) {
+						$errores[] = "Fila {$num}: error al insertar inscripción.";
+					} else {
+						$inscripciones_creadas++;
+					}
+				}
+			}
+		}
+
+		delete_transient( 'scl_csv_jugadores_' . $user_id );
+
+		scl_audit_log( 'importacion_csv', 'importacion', 0, [
+			'tipo'                => 'jugadores',
+			'jugadores_creados'   => $jugadores_creados,
+			'inscripciones_creadas' => $inscripciones_creadas,
+			'errores'             => count( $errores ),
+		] );
+
+		wp_send_json_success( [
+			'jugadores_creados'    => $jugadores_creados,
+			'inscripciones_creadas' => $inscripciones_creadas,
+			'omitidos'             => $omitidos,
+			'errores'              => $errores,
+		] );
+	}
+
+	public function ajax_descargar_plantilla_jugadores(): void {
+		if ( ! check_ajax_referer( 'scl_dashboard_nonce', 'nonce', false ) ) wp_die( 'Nonce inválido.' );
+		if ( ! is_user_logged_in() ) wp_die( 'No autenticado.' );
+
+		$csv = "nombre,apellido,posicion,equipo,torneo,temporada\n"
+			. "Juan,García,Delantero,Deportivo FC,Copa Regional,Apertura 2025\n"
+			. "María,López,Portera,Estrellas FC,,\n"
+			. "Carlos,Martínez,Defensa,Deportivo FC,Copa Regional,Apertura 2025\n";
+		$bom = "\xEF\xBB\xBF";
+
+		header( 'Content-Type: text/csv; charset=UTF-8' );
+		header( 'Content-Disposition: attachment; filename="plantilla-jugadores.csv"' );
 		header( 'Content-Length: ' . ( strlen( $bom ) + strlen( $csv ) ) );
 		header( 'Cache-Control: no-cache, no-store, must-revalidate' );
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
@@ -1749,6 +2103,10 @@ class Scl_Ajax {
 		$local_id  = (int) get_post_meta( $partido_id, 'scl_partido_equipo_local_id',  true );
 		$visita_id = (int) get_post_meta( $partido_id, 'scl_partido_equipo_visita_id', true );
 
+		scl_audit_log( 'stats_guardadas', 'scl_partido', $partido_id, [
+			'jugadores_modificados' => $guardados,
+		] );
+
 		wp_send_json_success( [
 			'guardados'   => $guardados,
 			'val_local'   => Scl_Stats::validar_goles_partido( $partido_id, $local_id ),
@@ -1776,11 +2134,15 @@ class Scl_Ajax {
 			wp_send_json_error( 'Los colaboradores no pueden modificar temporadas.' );
 		}
 
-		$term_id    = absint( $_POST['term_id'] ?? 0 );
+		$term_id      = absint( $_POST['term_id']      ?? 0 );
+		$torneo_id    = absint( $_POST['torneo_id']    ?? 0 );
 		$nuevo_estado = sanitize_key( wp_unslash( $_POST['nuevo_estado'] ?? '' ) );
 
 		if ( ! $term_id ) {
 			wp_send_json_error( 'ID de temporada inválido.' );
+		}
+		if ( ! $torneo_id ) {
+			wp_send_json_error( 'Se requiere el torneo para cambiar el estado.' );
 		}
 		if ( ! in_array( $nuevo_estado, [ 'activa', 'finalizada' ], true ) ) {
 			wp_send_json_error( 'Estado inválido.' );
@@ -1791,11 +2153,131 @@ class Scl_Ajax {
 			wp_send_json_error( 'Temporada no encontrada.' );
 		}
 
-		update_term_meta( $term_id, 'scl_temporada_estado', $nuevo_estado );
+		$torneo = get_post( $torneo_id );
+		if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
+			|| ( (int) $torneo->post_author !== scl_get_autor_efectivo() && ! current_user_can( 'manage_options' ) )
+		) {
+			wp_send_json_error( 'Torneo no válido o sin permisos.' );
+		}
+
+		$estado_anterior = scl_get_estado_temporada( $torneo_id, $term_id );
+		scl_set_estado_temporada( $torneo_id, $term_id, $nuevo_estado );
+
+		scl_audit_log( 'temporada_estado', 'scl_temporada', $term_id, [
+			'temporada'       => $term->name,
+			'torneo_id'       => $torneo_id,
+			'estado_anterior' => $estado_anterior,
+			'estado_nuevo'    => $nuevo_estado,
+		] );
 
 		wp_send_json_success( [
 			'nuevo_estado' => $nuevo_estado,
 			'label'        => 'activa' === $nuevo_estado ? __( 'Activa', 'sportcriss-lite' ) : __( 'Finalizada', 'sportcriss-lite' ),
 		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Fix 6: Perfil de usuario
+	// -----------------------------------------------------------------------
+
+	public function ajax_actualizar_perfil(): void {
+		$this->verificar_permisos();
+
+		$user_id  = get_current_user_id();
+		$nombre   = sanitize_text_field( wp_unslash( $_POST['nombre']   ?? '' ) );
+		$apellido = sanitize_text_field( wp_unslash( $_POST['apellido'] ?? '' ) );
+		$foto_id  = absint( $_POST['foto_id'] ?? 0 );
+
+		wp_update_user( [
+			'ID'         => $user_id,
+			'first_name' => $nombre,
+			'last_name'  => $apellido,
+			'display_name' => trim( $nombre . ' ' . $apellido ) ?: wp_get_current_user()->user_login,
+		] );
+
+		if ( $foto_id ) {
+			update_user_meta( $user_id, 'scl_perfil_foto_id', $foto_id );
+		}
+
+		wp_send_json_success();
+	}
+
+	public function ajax_enviar_codigo_email(): void {
+		$this->verificar_permisos();
+
+		$nuevo_email = sanitize_email( wp_unslash( $_POST['nuevo_email'] ?? '' ) );
+		if ( ! is_email( $nuevo_email ) ) wp_send_json_error( 'Email inválido.' );
+		if ( email_exists( $nuevo_email ) ) wp_send_json_error( 'Ese email ya está en uso.' );
+
+		$codigo  = str_pad( (string) wp_rand( 0, 999999 ), 6, '0', STR_PAD_LEFT );
+		$expira  = time() + 15 * MINUTE_IN_SECONDS;
+
+		$user_id = get_current_user_id();
+		update_user_meta( $user_id, 'scl_email_codigo',        $codigo );
+		update_user_meta( $user_id, 'scl_email_codigo_nuevo',  $nuevo_email );
+		update_user_meta( $user_id, 'scl_email_codigo_expira', $expira );
+
+		$portal = get_option( 'scl_portal_nombre', 'SportCriss Lite' );
+		$asunto = sprintf( '[%s] Código de verificación: %s', $portal, $codigo );
+		$cuerpo = sprintf(
+			"Tu código de verificación para cambiar el email es:\n\n%s\n\nEste código expira en 15 minutos.",
+			$codigo
+		);
+		$enviado = wp_mail( $nuevo_email, $asunto, $cuerpo );
+
+		if ( ! $enviado ) wp_send_json_error( 'No se pudo enviar el email. Revisa la configuración de correo del servidor.' );
+		wp_send_json_success();
+	}
+
+	public function ajax_verificar_codigo_email(): void {
+		$this->verificar_permisos();
+
+		$user_id = get_current_user_id();
+		$codigo  = sanitize_text_field( wp_unslash( $_POST['codigo'] ?? '' ) );
+
+		$codigo_guardado = (string) get_user_meta( $user_id, 'scl_email_codigo',       true );
+		$nuevo_email     = (string) get_user_meta( $user_id, 'scl_email_codigo_nuevo',  true );
+		$expira          = (int)    get_user_meta( $user_id, 'scl_email_codigo_expira', true );
+
+		if ( ! $codigo_guardado || time() > $expira ) {
+			wp_send_json_error( 'El código expiró. Solicita uno nuevo.' );
+		}
+		if ( ! hash_equals( $codigo_guardado, $codigo ) ) {
+			wp_send_json_error( 'Código incorrecto.' );
+		}
+		if ( ! is_email( $nuevo_email ) || email_exists( $nuevo_email ) ) {
+			wp_send_json_error( 'El email ya no está disponible.' );
+		}
+
+		wp_update_user( [ 'ID' => $user_id, 'user_email' => $nuevo_email ] );
+
+		delete_user_meta( $user_id, 'scl_email_codigo' );
+		delete_user_meta( $user_id, 'scl_email_codigo_nuevo' );
+		delete_user_meta( $user_id, 'scl_email_codigo_expira' );
+
+		wp_send_json_success();
+	}
+
+	public function ajax_cambiar_contrasena(): void {
+		$this->verificar_permisos();
+
+		$user_id  = get_current_user_id();
+		$actual   = wp_unslash( $_POST['contrasena_actual']    ?? '' );
+		$nueva    = wp_unslash( $_POST['contrasena_nueva']     ?? '' );
+		$confirma = wp_unslash( $_POST['contrasena_confirmar'] ?? '' );
+
+		if ( ! $actual || ! $nueva || ! $confirma ) wp_send_json_error( 'Todos los campos son obligatorios.' );
+		if ( strlen( $nueva ) < 8 ) wp_send_json_error( 'La nueva contraseña debe tener al menos 8 caracteres.' );
+		if ( $nueva !== $confirma ) wp_send_json_error( 'Las contraseñas no coinciden.' );
+
+		$user = get_userdata( $user_id );
+		if ( ! wp_check_password( $actual, $user->user_pass, $user_id ) ) {
+			wp_send_json_error( 'La contraseña actual es incorrecta.' );
+		}
+
+		wp_set_password( $nueva, $user_id );
+		wp_set_auth_cookie( $user_id, false );
+
+		wp_send_json_success();
 	}
 }

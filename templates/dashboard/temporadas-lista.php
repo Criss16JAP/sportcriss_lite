@@ -63,17 +63,22 @@ $temporadas = get_terms([
 				</tr>
 			</thead>
 			<tbody>
-				<?php foreach ( $temporadas as $t ) : 
-					$anio = get_term_meta( $t->term_id, 'scl_temporada_anio', true );
-					$estado = get_term_meta( $t->term_id, 'scl_temporada_estado', true );
+				<?php foreach ( $temporadas as $t ) :
+					$anio   = get_term_meta( $t->term_id, 'scl_temporada_anio', true );
+					$estado = scl_get_estado_temporada( $torneo_id, $t->term_id );
+					$next   = 'activa' === $estado ? 'finalizada' : 'activa';
 				?>
 					<tr>
 						<td><strong><?php echo esc_html( $t->name ); ?></strong></td>
 						<td><?php echo esc_html( $anio ); ?></td>
 						<td>
-							<span class="scl-badge scl-badge--<?php echo esc_attr( $estado ); ?>">
-								<?php echo esc_html( ucfirst( $estado ) ); ?>
-							</span>
+							<button type="button"
+							        class="scl-btn scl-btn--sm <?php echo 'activa' === $estado ? 'scl-btn--outline' : 'scl-btn--ghost'; ?>"
+							        onclick="scl_cambiar_estado_temporada(<?php echo esc_attr( $t->term_id ); ?>, '<?php echo esc_attr( $next ); ?>', <?php echo esc_attr( $torneo_id ); ?>)">
+								<?php echo 'activa' === $estado
+									? esc_html__( '→ Marcar finalizada', 'sportcriss-lite' )
+									: esc_html__( '→ Reactivar',        'sportcriss-lite' ); ?>
+							</button>
 						</td>
 						<td>
 							<div class="scl-actions-group">

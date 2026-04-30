@@ -16,6 +16,7 @@ $torneo_filtro    = absint( $_GET['torneo_id']    ?? 0 );
 $temporada_filtro = absint( $_GET['temporada_id'] ?? 0 );
 $fase_filtro      = sanitize_key( $_GET['tipo_fase'] ?? '' );
 $estado_filtro    = sanitize_key( $_GET['estado']    ?? '' );
+$jornada_filtro   = absint( $_GET['jornada_id']   ?? 0 );
 
 $autor_ef = scl_get_autor_efectivo();
 
@@ -56,6 +57,33 @@ $mis_equipos = get_posts( [
 	'order'          => 'ASC',
 ] );
 
+// ── Jornadas disponibles para el filtro (de todos los partidos del org) ────
+$jornadas_filtro_opts = [];
+if ( ! empty( $mis_torneo_ids ) ) {
+	$ids_todos_partidos = get_posts( [
+		'post_type'      => 'scl_partido',
+		'author'         => $autor_ef,
+		'post_status'    => 'publish',
+		'posts_per_page' => -1,
+		'fields'         => 'ids',
+		'meta_query'     => [ [
+			'key'     => 'scl_partido_torneo_id',
+			'value'   => $mis_torneo_ids,
+			'compare' => 'IN',
+			'type'    => 'NUMERIC',
+		] ],
+	] );
+	if ( ! empty( $ids_todos_partidos ) ) {
+		$jornadas_filtro_opts = get_terms( [
+			'taxonomy'   => 'scl_jornada',
+			'hide_empty' => true,
+			'object_ids' => $ids_todos_partidos,
+			'orderby'    => 'name',
+		] );
+		$jornadas_filtro_opts = is_wp_error( $jornadas_filtro_opts ) ? [] : $jornadas_filtro_opts;
+	}
+}
+
 // ── Query principal de partidos ────────────────────────────────────────────
 $partidos = [];
 if ( ! empty( $mis_torneo_ids ) || $torneo_filtro ) {
@@ -80,6 +108,13 @@ if ( ! empty( $mis_torneo_ids ) || $torneo_filtro ) {
 			'taxonomy' => 'scl_temporada',
 			'field'    => 'term_id',
 			'terms'    => $temporada_filtro,
+		];
+	}
+	if ( $jornada_filtro ) {
+		$tax_query[] = [
+			'taxonomy' => 'scl_jornada',
+			'field'    => 'term_id',
+			'terms'    => $jornada_filtro,
 		];
 	}
 
@@ -192,6 +227,17 @@ $datos_drawer = [
 		<option value="pendiente"  <?php selected( $estado_filtro, 'pendiente' ); ?>><?php esc_html_e( 'Pendiente', 'sportcriss-lite' ); ?></option>
 		<option value="finalizado" <?php selected( $estado_filtro, 'finalizado' ); ?>><?php esc_html_e( 'Finalizado', 'sportcriss-lite' ); ?></option>
 	</select>
+
+	<?php if ( ! empty( $jornadas_filtro_opts ) ) : ?>
+	<select id="scl_filtro_jornada" data-param="jornada_id">
+		<option value="0"><?php esc_html_e( 'Todas las jornadas', 'sportcriss-lite' ); ?></option>
+		<?php foreach ( $jornadas_filtro_opts as $j ) : ?>
+			<option value="<?php echo esc_attr( $j->term_id ); ?>" <?php selected( $jornada_filtro, $j->term_id ); ?>>
+				<?php echo esc_html( $j->name ); ?>
+			</option>
+		<?php endforeach; ?>
+	</select>
+	<?php endif; ?>
 </div>
 
 <?php if ( ! empty( $partidos ) ) :

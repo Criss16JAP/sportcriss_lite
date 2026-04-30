@@ -47,6 +47,7 @@ require_once SCL_PATH . 'includes/class-scl-ads.php';
 require_once SCL_PATH . 'includes/class-scl-ads-metrics.php';
 require_once SCL_PATH . 'includes/class-scl-admin-columns.php';
 require_once SCL_PATH . 'includes/class-scl-stats.php';
+require_once SCL_PATH . 'includes/class-scl-audit-admin.php';
 
 // ---------------------------------------------------------------------------
 // Hooks de activación y desactivación
@@ -111,9 +112,73 @@ function scl_crear_tablas_stats() {
 		KEY organizador_id (organizador_id)
 	) $charset_collate;";
 
+	// Tabla de auditoría: registro de todas las acciones relevantes
+	$sql_audit_log = "CREATE TABLE {$wpdb->prefix}scl_audit_log (
+		id              BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id         BIGINT(20) UNSIGNED NOT NULL,
+		organizador_id  BIGINT(20) UNSIGNED NOT NULL,
+		accion          VARCHAR(60)  NOT NULL,
+		objeto_tipo     VARCHAR(40)  NOT NULL,
+		objeto_id       BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
+		detalle         LONGTEXT DEFAULT NULL,
+		ip_hash         VARCHAR(64)  NOT NULL,
+		created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		PRIMARY KEY (id),
+		KEY idx_org    (organizador_id),
+		KEY idx_accion (accion),
+		KEY idx_fecha  (created_at)
+	) $charset_collate;";
+
 	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 	dbDelta( $sql_inscripciones );
 	dbDelta( $sql_estadisticas );
+	dbDelta( $sql_audit_log );
+}
+
+// ---------------------------------------------------------------------------
+// Función central de auditoría (Sprint 13)
+// ---------------------------------------------------------------------------
+
+/**
+ * Registra una acción en el log de auditoría.
+ *
+ * La IP del usuario NUNCA se guarda en texto plano;
+ * solo se almacena el hash SHA-256(IP + wp_salt).
+ *
+ * @param string $accion      Slug de la acción (ej: 'torneo_creado').
+ * @param string $objeto_tipo Tipo de objeto afectado (ej: 'scl_torneo').
+ * @param int    $objeto_id   ID del objeto (0 si no aplica).
+ * @param array  $detalle     Datos extra a serializar como JSON.
+ */
+function scl_audit_log(
+	string $accion,
+	string $objeto_tipo,
+	int    $objeto_id = 0,
+	array  $detalle   = []
+): void {
+	global $wpdb;
+	$user_id = get_current_user_id();
+	$org_id  = scl_get_autor_efectivo();
+	$ip_hash = hash(
+		'sha256',
+		( isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '' )
+		. wp_salt( 'auth' )
+	);
+
+	$wpdb->insert(
+		$wpdb->prefix . 'scl_audit_log',
+		[
+			'user_id'        => $user_id,
+			'organizador_id' => $org_id,
+			'accion'         => sanitize_key( $accion ),
+			'objeto_tipo'    => sanitize_key( $objeto_tipo ),
+			'objeto_id'      => $objeto_id,
+			'detalle'        => wp_json_encode( $detalle ),
+			'ip_hash'        => $ip_hash,
+			'created_at'     => current_time( 'mysql' ),
+		],
+		[ '%d', '%d', '%s', '%s', '%d', '%s', '%s', '%s' ]
+	);
 }
 
 /**
@@ -132,8 +197,13 @@ function scl_activar_plugin() {
 	// Tabla de log de publicidad
 	Scl_Ads::crear_tabla_ad_log();
 
-	// Tablas de estadísticas individuales
+	// Tablas de estadísticas individuales y auditoría
 	scl_crear_tablas_stats();
+
+	// Cron de purga automática del log de auditoría
+	if ( ! wp_next_scheduled( 'scl_purga_audit' ) ) {
+		wp_schedule_event( time(), 'daily', 'scl_purga_audit' );
+	}
 
 	// Sprint 3: Página del dashboard
 	$pagina = get_page_by_path( 'mi-panel' );
@@ -173,12 +243,28 @@ function scl_activar_plugin() {
 }
 
 /**
- * Rutina de desactivación: limpia las reglas de reescritura.
+ * Rutina de desactivación: limpia las reglas de reescritura y el cron de auditoría.
  * No elimina datos ni roles (eso queda para uninstall).
  */
 function scl_desactivar_plugin() {
 	flush_rewrite_rules();
+	wp_clear_scheduled_hook( 'scl_purga_audit' );
 }
+
+// ---------------------------------------------------------------------------
+// WP-Cron: purga automática del log de auditoría (Sprint 13)
+// ---------------------------------------------------------------------------
+
+add_action( 'scl_purga_audit', function() {
+	$dias = (int) get_option( 'scl_audit_retension_dias', 90 );
+	global $wpdb;
+	// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+	$wpdb->query( $wpdb->prepare(
+		"DELETE FROM {$wpdb->prefix}scl_audit_log
+		 WHERE created_at < DATE_SUB(NOW(), INTERVAL %d DAY)",
+		$dias
+	) );
+} );
 
 // ---------------------------------------------------------------------------
 // Arranque del plugin
@@ -200,6 +286,19 @@ function scl_run() {
 	// Menú unificado en wp-admin (solo para administrator)
 	$admin_menu = new Scl_Admin_Menu();
 	$loader->add_action( 'admin_menu', [ $admin_menu, 'registrar' ] );
+
+	// Módulo de auditoría (Sprint 13)
+	$audit_admin = new Scl_Audit_Admin();
+	$loader->add_action( 'admin_menu', function() use ( $audit_admin ) {
+		add_submenu_page(
+			Scl_Admin_Menu::PARENT_SLUG,
+			__( 'Auditoría — SportCriss Lite', 'sportcriss-lite' ),
+			__( 'Auditoría', 'sportcriss-lite' ),
+			'manage_options',
+			'scl-auditoria',
+			[ $audit_admin, 'render' ]
+		);
+	} );
 
 	// Registro de CPTs y taxonomías en cada carga
 	$loader->add_action( 'init', [ 'Scl_Cpts',       'registrar' ] );

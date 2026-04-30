@@ -228,3 +228,158 @@
 	}
 
 })(jQuery);
+
+// ── Importador de Jugadores (Fix 2) ───────────────────────────────────────
+(function ($) {
+	'use strict';
+
+	if (!$('#scl-jug-step-1').length) return;
+
+	var $step1    = $('#scl-jug-step-1');
+	var $step2    = $('#scl-jug-step-2');
+	var $step3    = $('#scl-jug-step-3');
+	var $dropzone = $('#scl-jug-dropzone');
+	var $fileInput = $('#scl-jug-file');
+	var jugErrores = false;
+
+	// Drag & drop
+	$dropzone.on('dragover dragenter', function (e) {
+		e.preventDefault();
+		$(this).addClass('scl-dropzone--over');
+	}).on('dragleave dragend', function () {
+		$(this).removeClass('scl-dropzone--over');
+	}).on('drop', function (e) {
+		e.preventDefault();
+		$(this).removeClass('scl-dropzone--over');
+		var files = e.originalEvent.dataTransfer.files;
+		if (files.length) handleJugFile(files[0]);
+	}).on('click keydown', function (e) {
+		if (e.type === 'keydown' && e.which !== 13 && e.which !== 32) return;
+		$fileInput.click();
+	});
+
+	$fileInput.on('change', function () {
+		if (this.files.length) handleJugFile(this.files[0]);
+	});
+
+	function handleJugFile(file) {
+		var ext = file.name.split('.').pop().toLowerCase();
+		if (ext !== 'csv') { scl_flash('Solo se aceptan archivos .csv.', 'error'); return; }
+
+		$dropzone.addClass('scl-dropzone--loading')
+			.find('.scl-dropzone__text')
+			.html('Procesando <em>' + escHtml(file.name) + '</em>…');
+
+		var formData = new FormData();
+		formData.append('action', 'scl_validar_csv_jugadores');
+		formData.append('nonce', scl_ajax.nonce);
+		formData.append('csv_file', file);
+
+		$.ajax({
+			url: scl_ajax.url, type: 'POST',
+			data: formData, processData: false, contentType: false,
+			success: function (res) {
+				if (res.success) mostrarJugValidacion(res.data);
+				else { scl_flash(res.data || 'Error al procesar el CSV.', 'error'); resetJugDropzone(); }
+			},
+			error: function () { scl_flash('Error de conexión.', 'error'); resetJugDropzone(); }
+		});
+	}
+
+	function resetJugDropzone() {
+		$dropzone.removeClass('scl-dropzone--loading scl-dropzone--over');
+		$dropzone.find('.scl-dropzone__text').html(
+			'Arrastra tu CSV de jugadores aquí o <span class="scl-link">haz clic para seleccionar</span>'
+		);
+		$fileInput.val('');
+	}
+
+	function mostrarJugValidacion(data) {
+		jugErrores = data.filas_con_error > 0;
+
+		$('#scl-jug-val-total').text(data.total);
+		$('#scl-jug-val-validas').text(data.filas_validas);
+		$('#scl-jug-val-errores').text(data.filas_con_error);
+
+		var $lista = $('#scl-jug-nuevos-lista').empty();
+		if (data.jugadores_nuevos && data.jugadores_nuevos.length)
+			$lista.append('<li><strong>Jugadores a crear:</strong> ' + escHtml(data.jugadores_nuevos.join(', ')) + '</li>');
+		if (data.equipos_nuevos && data.equipos_nuevos.length)
+			$lista.append('<li><strong>Equipos a crear:</strong> ' + escHtml(data.equipos_nuevos.join(', ')) + '</li>');
+		if (data.inscripciones_a_crear > 0)
+			$lista.append('<li><strong>Inscripciones a crear:</strong> ' + data.inscripciones_a_crear + '</li>');
+		if (!$lista.children().length)
+			$lista.append('<li>No se crearán entidades nuevas.</li>');
+
+		var $errLista = $('#scl-jug-errores-lista').empty();
+		if (data.errores && data.errores.length) {
+			$('#scl-jug-errores-bloque').show();
+			$.each(data.errores, function (i, err) { $errLista.append('<li>' + escHtml(err) + '</li>'); });
+		} else {
+			$('#scl-jug-errores-bloque').hide();
+		}
+
+		var $tbody = $('#scl-jug-preview-tbody').empty();
+		if (data.preview && data.preview.length) {
+			$.each(data.preview, function (i, fila) {
+				var cols = [fila.nombre, fila.apellido, fila.posicion, fila.equipo, fila.torneo, fila.temporada];
+				$tbody.append('<tr>' + cols.map(function (v) {
+					return '<td>' + escHtml(v != null ? String(v) : '') + '</td>';
+				}).join('') + '</tr>');
+			});
+		}
+
+		$('#scl-jug-importar-btn')
+			.text('Importar ' + data.filas_validas + ' filas')
+			.prop('disabled', data.filas_validas === 0);
+
+		$step1.hide();
+		$step2.show();
+		window.scrollTo(0, 0);
+	}
+
+	$('#scl-jug-cambiar-archivo').on('click', function () {
+		$step2.hide(); $step1.show(); resetJugDropzone(); window.scrollTo(0, 0);
+	});
+
+	$('#scl-jug-importar-btn').on('click', function () {
+		if ($(this).prop('disabled')) return;
+		var $btn = $(this).prop('disabled', true).text('Importando…');
+
+		$.post(scl_ajax.url, { action: 'scl_procesar_importacion_jugadores', nonce: scl_ajax.nonce },
+			function (res) {
+				if (res.success) mostrarJugResultado(res.data);
+				else { scl_flash(res.data || 'Error al importar.', 'error'); $btn.prop('disabled', false).text('Reintentar'); }
+			}
+		).fail(function () {
+			scl_flash('Error de conexión.', 'error');
+			$btn.prop('disabled', false).text('Reintentar');
+		});
+	});
+
+	function mostrarJugResultado(data) {
+		$('#scl-jug-res-creados').text(data.jugadores_creados || 0);
+		$('#scl-jug-res-inscripciones').text(data.inscripciones_creadas || 0);
+		$('#scl-jug-res-omitidos').text(data.omitidos || 0);
+
+		var $errLista = $('#scl-jug-res-errores-lista').empty();
+		if (data.errores && data.errores.length) {
+			$('#scl-jug-res-errores-bloque').show();
+			$.each(data.errores, function (i, err) { $errLista.append('<li>' + escHtml(err) + '</li>'); });
+		} else {
+			$('#scl-jug-res-errores-bloque').hide();
+		}
+		$step2.hide(); $step3.show(); window.scrollTo(0, 0);
+	}
+
+	$('#scl-jug-otro-csv').on('click', function () {
+		$step3.hide(); $step1.show(); resetJugDropzone(); window.scrollTo(0, 0);
+	});
+
+	function escHtml(str) {
+		return String(str)
+			.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+	}
+
+})(jQuery);
