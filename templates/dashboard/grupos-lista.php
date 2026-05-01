@@ -15,7 +15,12 @@ if ( $torneo_id > 0 ) {
 	if ( ! $torneo || 'scl_torneo' !== $torneo->post_type
 		|| ( (int) $torneo->post_author !== $autor_ef && ! current_user_can( 'manage_options' ) )
 	) {
-		echo '<div class="scl-flash scl-flash--error">Torneo no válido o sin permisos.</div>';
+		echo '<div class="scl-empty">'
+			. '<p style="font-size:2rem">📋</p>'
+			. '<h3>' . esc_html__( 'Torneo no encontrado', 'sportcriss-lite' ) . '</h3>'
+			. '<p>' . esc_html__( 'El torneo que buscas no existe o no tienes acceso.', 'sportcriss-lite' ) . '</p>'
+			. '<a href="?scl_ruta=torneos" class="scl-btn scl-btn--primary">' . esc_html__( 'Ver mis torneos', 'sportcriss-lite' ) . '</a>'
+			. '</div>';
 		return;
 	}
 

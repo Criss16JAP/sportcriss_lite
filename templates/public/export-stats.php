@@ -94,8 +94,13 @@ $tipo_labels = [
     'tarjetas_amarillas' => 'Tarjetas Amarillas',
     'tarjetas_rojas'     => 'Tarjetas Rojas',
     'calificaciones'     => 'Mejores Calificaciones',
+    'valla'              => 'Valla menos vencida',
 ];
 $titulo_stat = $tipo_labels[ $stats_tipo ] ?? ucfirst( str_replace( '_', ' ', $stats_tipo ) );
+
+$valla_data = ( 'valla' === $stats_tipo )
+    ? Scl_Stats::get_valla_menos_vencida( $torneo_id, $temporada_term_id )
+    : [];
 ?>
 
 <div class="scl-export-wrapper">
@@ -129,7 +134,56 @@ $titulo_stat = $tipo_labels[ $stats_tipo ] ?? ucfirst( str_replace( '_', ' ', $s
         </div>
 
         <!-- Tabla de estadísticas -->
-        <?php if ( empty( $stats_data ) ) : ?>
+        <?php if ( 'valla' === $stats_tipo ) : ?>
+            <?php if ( empty( $valla_data ) ) : ?>
+                <div class="scl-stats-empty">
+                    <?php esc_html_e( 'No hay datos de valla disponibles aún.', 'sportcriss-lite' ); ?>
+                </div>
+            <?php else : ?>
+                <div class="scl-export-tabla-wrap">
+                    <table class="scl-stats-tabla">
+                        <thead>
+                            <tr>
+                                <th class="num">#</th>
+                                <th></th>
+                                <th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+                                <th class="num"><?php esc_html_e( 'PJ', 'sportcriss-lite' ); ?></th>
+                                <th class="num"><?php esc_html_e( 'GC', 'sportcriss-lite' ); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ( $valla_data as $i => $row ) :
+                                $pos    = $i + 1;
+                                $is_top = $pos <= 3;
+                                $escudo_id  = (int) get_post_meta( (int) $row->equipo_id, 'scl_equipo_escudo', true );
+                                $escudo_url = $escudo_id ? wp_get_attachment_image_url( $escudo_id, [ 40, 40 ] ) : '';
+                            ?>
+                            <tr>
+                                <td class="num">
+                                    <span class="scl-stats-rank <?php echo $is_top ? 'top' : ''; ?>">
+                                        <?php echo esc_html( $pos ); ?>
+                                    </span>
+                                </td>
+                                <td style="width:36px;text-align:center;">
+                                    <?php if ( $escudo_url ) : ?>
+                                        <img src="<?php echo esc_url( $escudo_url ); ?>"
+                                             alt="" style="width:28px;height:28px;object-fit:contain;vertical-align:middle;">
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <span class="scl-stats-jugador-nombre">
+                                        <?php echo esc_html( $row->equipo_nombre ?? '—' ); ?>
+                                    </span>
+                                </td>
+                                <td class="num"><?php echo esc_html( (int) ( $row->partidos ?? 0 ) ); ?></td>
+                                <td class="num"><?php echo esc_html( (int) ( $row->goles_en_contra ?? 0 ) ); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        <?php elseif ( empty( $stats_data ) ) : ?>
             <div class="scl-stats-empty">
                 <?php esc_html_e( 'No hay estadísticas disponibles aún.', 'sportcriss-lite' ); ?>
             </div>
@@ -202,7 +256,10 @@ $titulo_stat = $tipo_labels[ $stats_tipo ] ?? ucfirst( str_replace( '_', ' ', $s
 
         <!-- Footer -->
         <div class="scl-export-footer">
-            <span><?php echo esc_html( date_i18n( 'j M Y · H:i' ) ); ?></span>
+            <span class="scl-export-updated">
+                <?php echo esc_html__( 'Actualizado:', 'sportcriss-lite' ) . ' ' . esc_html( date_i18n( 'j M Y · H:i' ) ); ?>
+            </span>
+            <span class="scl-export-brand">SportCriss Lite</span>
         </div>
 
     </div>

@@ -9,8 +9,14 @@ $home_url  = home_url( '/mi-panel/' );
 $torneo_id = (int) ( $_GET['scl_id'] ?? 0 );
 
 $torneo = $torneo_id ? get_post( $torneo_id ) : null;
-if ( ! $torneo || ( (int) $torneo->post_author !== $autor_ef && ! current_user_can( 'manage_options' ) ) ) {
-	echo '<div class="scl-empty"><p>' . esc_html__( 'Torneo no encontrado.', 'sportcriss-lite' ) . '</p></div>';
+if ( ! $torneo || $torneo->post_type !== 'scl_torneo'
+	|| ( (int) $torneo->post_author !== $autor_ef && ! current_user_can( 'manage_options' ) ) ) {
+	echo '<div class="scl-empty">'
+		. '<p style="font-size:2rem">📋</p>'
+		. '<h3>' . esc_html__( 'Torneo no encontrado', 'sportcriss-lite' ) . '</h3>'
+		. '<p>' . esc_html__( 'El torneo que buscas no existe o no tienes acceso.', 'sportcriss-lite' ) . '</p>'
+		. '<a href="?scl_ruta=torneos" class="scl-btn scl-btn--primary">' . esc_html__( 'Ver mis torneos', 'sportcriss-lite' ) . '</a>'
+		. '</div>';
 	return;
 }
 
@@ -39,10 +45,16 @@ $temp_sel     = (int) ( $_GET['scl_temporada'] ?? ( $temporadas ? reset( $tempor
 $stats_tipo   = sanitize_key( $_GET['scl_tipo'] ?? 'goleadores' );
 $stats_limite = max( 5, min( 20, (int) ( $_GET['scl_limite'] ?? 10 ) ) );
 
-$stats_tipos_validos = [ 'goleadores', 'asistencias', 'tarjetas_amarillas', 'tarjetas_rojas', 'calificaciones' ];
+$stats_tipos_validos = [ 'goleadores', 'asistencias', 'tarjetas_amarillas', 'tarjetas_rojas', 'calificaciones', 'valla' ];
 if ( ! in_array( $stats_tipo, $stats_tipos_validos, true ) ) $stats_tipo = 'goleadores';
 
-$stats_data = Scl_Export::get_stats_render( $torneo_id, $temp_sel, $stats_tipo, $stats_limite );
+if ( 'valla' === $stats_tipo ) {
+	$valla_data = Scl_Stats::get_valla_menos_vencida( $torneo_id, $temp_sel );
+	$stats_data = [];
+} else {
+	$stats_data = Scl_Export::get_stats_render( $torneo_id, $temp_sel, $stats_tipo, $stats_limite );
+	$valla_data = [];
+}
 
 $tipo_labels = [
 	'goleadores'         => __( 'Goleadores', 'sportcriss-lite' ),
@@ -50,6 +62,7 @@ $tipo_labels = [
 	'tarjetas_amarillas' => __( 'Tarjetas Amarillas', 'sportcriss-lite' ),
 	'tarjetas_rojas'     => __( 'Tarjetas Rojas', 'sportcriss-lite' ),
 	'calificaciones'     => __( 'Calificaciones', 'sportcriss-lite' ),
+	'valla'              => __( 'Valla menos vencida', 'sportcriss-lite' ),
 ];
 
 $logo_id = (int) get_post_meta( $torneo_id, 'scl_torneo_logo', true );
@@ -122,7 +135,46 @@ $logo_id = (int) get_post_meta( $torneo_id, 'scl_torneo_logo', true );
 <div class="scl-form-section">
 	<h2 class="scl-section-title"><?php echo esc_html( $tipo_labels[ $stats_tipo ] ); ?></h2>
 
-	<?php if ( empty( $stats_data ) ) : ?>
+	<?php if ( 'valla' === $stats_tipo ) : ?>
+		<?php if ( empty( $valla_data ) ) : ?>
+			<div class="scl-empty">
+				<p><?php esc_html_e( 'No hay datos de valla disponibles aún.', 'sportcriss-lite' ); ?></p>
+			</div>
+		<?php else : ?>
+			<div class="scl-table-wrap">
+				<table class="scl-table">
+					<thead>
+						<tr>
+							<th class="scl-col-pos">#</th>
+							<th class="scl-col-escudo"></th>
+							<th><?php esc_html_e( 'Equipo', 'sportcriss-lite' ); ?></th>
+							<th class="scl-col-num">PJ</th>
+							<th class="scl-col-num scl-col-pts">GC</th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( $valla_data as $i => $row ) :
+							$escudo_id  = (int) get_post_meta( (int) $row->equipo_id, 'scl_equipo_escudo', true );
+							$escudo_url = $escudo_id ? wp_get_attachment_image_url( $escudo_id, 'thumbnail' ) : '';
+						?>
+						<tr>
+							<td><?php echo esc_html( $i + 1 ); ?></td>
+							<td>
+								<?php if ( $escudo_url ) : ?>
+									<img src="<?php echo esc_url( $escudo_url ); ?>"
+									     alt="" style="width:24px;height:24px;object-fit:contain;">
+								<?php endif; ?>
+							</td>
+							<td><strong><?php echo esc_html( $row->equipo_nombre ?? '—' ); ?></strong></td>
+							<td class="scl-col-num"><?php echo esc_html( (int) ( $row->partidos ?? 0 ) ); ?></td>
+							<td class="scl-col-num scl-col-pts-val"><?php echo esc_html( (int) ( $row->goles_en_contra ?? 0 ) ); ?></td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+			</div>
+		<?php endif; ?>
+	<?php elseif ( empty( $stats_data ) ) : ?>
 		<div class="scl-empty">
 			<p><?php esc_html_e( 'No hay estadísticas disponibles aún.', 'sportcriss-lite' ); ?></p>
 		</div>

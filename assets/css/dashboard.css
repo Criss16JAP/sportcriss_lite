@@ -93,6 +93,36 @@ body.page-template-default .scl-dashboard {
 	display: none; /* hidden on desktop — all links flat */
 }
 
+/* ── Nav grupos con dropdown ─────────────────────────────────── */
+.scl-nav__group { position: relative; }
+
+.scl-nav__group-btn {
+	background: none; border: none; cursor: pointer;
+	color: rgba(255,255,255,0.75); font-size: 0.875rem;
+	font-weight: 500; padding: 0.5rem 0.875rem;
+	border-radius: 6px; display: flex; align-items: center; gap: 4px;
+	transition: background 0.15s, color 0.15s; white-space: nowrap;
+}
+.scl-nav__group-btn:hover,
+.scl-nav__group.open .scl-nav__group-btn {
+	background: rgba(255,255,255,0.12); color: #fff;
+}
+
+.scl-nav__dropdown {
+	display: none; position: absolute; top: calc(100% + 4px); left: 0;
+	background: #1a3a5c; border: 1px solid rgba(255,255,255,0.12);
+	border-radius: 8px; min-width: 180px; padding: 6px;
+	box-shadow: 0 8px 24px rgba(0,0,0,0.3); z-index: 200;
+	list-style: none; margin: 0;
+}
+.scl-nav__group.open .scl-nav__dropdown { display: block; }
+.scl-nav__dropdown a {
+	display: block; padding: 8px 12px; color: rgba(255,255,255,0.8);
+	text-decoration: none; border-radius: 6px; font-size: 0.875rem;
+	transition: background 0.15s;
+}
+.scl-nav__dropdown a:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
 .scl-nav__user {
 	display: flex;
 	align-items: center;
@@ -411,6 +441,14 @@ body.page-template-default .scl-dashboard {
 		border-top: 1px solid rgba(255,255,255,0.08);
 	}
 	.scl-nav__separator:first-child { border-top: none; margin-top: 0; }
+
+	.scl-nav__dropdown {
+		position: static; border: none; box-shadow: none;
+		background: rgba(0,0,0,0.15); border-radius: 4px;
+		margin: 4px 0 4px 1rem; padding: 4px;
+	}
+	.scl-nav__group.open .scl-nav__dropdown { display: block; }
+	.scl-nav__group-btn { width: 100%; justify-content: space-between; }
 
 	.scl-nav__user-name { display: none; }
 	.scl-nav__inner { padding: 0 1rem; }

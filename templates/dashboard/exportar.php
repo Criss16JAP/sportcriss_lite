@@ -245,6 +245,7 @@ $export_url_partidos = Scl_Export::get_url_partidos( $torneo_id, $temp_sel );
 					<option value="tarjetas_amarillas"><?php esc_html_e( 'Tarjetas Amarillas', 'sportcriss-lite' ); ?></option>
 					<option value="tarjetas_rojas"><?php esc_html_e( 'Tarjetas Rojas', 'sportcriss-lite' ); ?></option>
 					<option value="calificaciones"><?php esc_html_e( 'Calificaciones', 'sportcriss-lite' ); ?></option>
+					<option value="valla"><?php esc_html_e( 'Valla menos vencida', 'sportcriss-lite' ); ?></option>
 				</select>
 			</div>
 			<div class="scl-field" style="max-width:100px;">

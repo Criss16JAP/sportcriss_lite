@@ -19,7 +19,12 @@ $partido = get_post( $partido_id );
 if ( ! $partido || 'scl_partido' !== $partido->post_type
 	|| ( (int) $partido->post_author !== $autor_ef && ! current_user_can( 'manage_options' ) )
 ) {
-	echo '<div class="scl-flash scl-flash--error">' . esc_html__( 'Partido no válido o sin permisos.', 'sportcriss-lite' ) . '</div>';
+	echo '<div class="scl-empty">'
+		. '<p style="font-size:2rem">📋</p>'
+		. '<h3>' . esc_html__( 'Partido no encontrado', 'sportcriss-lite' ) . '</h3>'
+		. '<p>' . esc_html__( 'El partido que buscas no existe o no tienes acceso.', 'sportcriss-lite' ) . '</p>'
+		. '<a href="?scl_ruta=partidos" class="scl-btn scl-btn--primary">' . esc_html__( 'Ver mis partidos', 'sportcriss-lite' ) . '</a>'
+		. '</div>';
 	return;
 }
 

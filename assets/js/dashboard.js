@@ -44,6 +44,18 @@ document.addEventListener('DOMContentLoaded', function() {
 	document.getElementById('scl_hamburger')?.addEventListener('click', function() {
 		document.getElementById('scl_nav_links')?.classList.toggle('open');
 	});
+
+	// Toggle de grupos del nav con dropdown
+	$(document).on('click', '.scl-nav__group-btn', function(e) {
+		e.stopPropagation();
+		var $group = $(this).closest('.scl-nav__group');
+		var isOpen = $group.hasClass('open');
+		$('.scl-nav__group').removeClass('open');
+		if (!isOpen) $group.addClass('open');
+	});
+	$(document).on('click', function() {
+		$('.scl-nav__group').removeClass('open');
+	});
 });
 
 // ── Color picker sync ─────────────────────────────────────────
