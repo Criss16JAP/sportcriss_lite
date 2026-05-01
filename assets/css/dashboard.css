@@ -1254,3 +1254,74 @@ body.scl-drawer-active { overflow: hidden; }
 	color: var(--scl-primary);
 	border-bottom-color: var(--scl-primary);
 }
+
+/* ── Sistema de mensajes flash ───────────────────────────────── */
+#scl_flash_container {
+	position: fixed;
+	top: 80px;
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 9999;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.5rem;
+	pointer-events: none;
+	width: 100%;
+	max-width: 480px;
+	padding: 0 1rem;
+}
+
+.scl-flash {
+	pointer-events: all;
+	width: 100%;
+	padding: 1rem 1.25rem;
+	border-radius: 10px;
+	font-size: 0.9rem;
+	font-weight: 600;
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+	animation: scl_flash_in 0.3s ease;
+	backdrop-filter: blur(8px);
+}
+
+.scl-flash--success {
+	background: rgba(30, 130, 76, 0.97);
+	color: #fff;
+	border-left: 4px solid #27ae60;
+}
+.scl-flash--error {
+	background: rgba(192, 57, 43, 0.97);
+	color: #fff;
+	border-left: 4px solid #e74c3c;
+}
+.scl-flash--warning {
+	background: rgba(243, 156, 18, 0.97);
+	color: #fff;
+	border-left: 4px solid #f39c12;
+}
+.scl-flash--info {
+	background: rgba(26, 58, 92, 0.97);
+	color: #fff;
+	border-left: 4px solid #f5a623;
+}
+
+.scl-flash__icon { font-size: 1.25rem; flex-shrink: 0; }
+.scl-flash__text { flex: 1; line-height: 1.4; }
+.scl-flash__close {
+	background: none; border: none; color: rgba(255,255,255,0.7);
+	cursor: pointer; font-size: 1.1rem; padding: 0 4px;
+	flex-shrink: 0; transition: color 0.15s;
+}
+.scl-flash__close:hover { color: #fff; }
+
+@keyframes scl_flash_in {
+	from { opacity: 0; transform: translateY(-16px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+	#scl_flash_container { top: 70px; }
+}

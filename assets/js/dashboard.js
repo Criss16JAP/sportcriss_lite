@@ -17,27 +17,52 @@ window.scl_url = function(ruta, id, accion) {
 };
 
 // Mostrar mensaje flash (éxito o error)
-function scl_flash(mensaje, tipo = 'success') {
-	var $flash = jQuery('<div class="scl-flash scl-flash--' + tipo + '">' + mensaje + '</div>');
-	jQuery('body').append($flash);
-	$flash.css({
-		position: 'fixed',
-		top: '20px',
-		right: '20px',
-		zIndex: 9999,
-		boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+function scl_flash( mensaje, tipo, duracion ) {
+	tipo     = tipo     || 'success';
+	duracion = ( duracion === undefined ) ? 4000 : duracion;
+
+	if ( ! document.getElementById('scl_flash_container') ) {
+		var container = document.createElement('div');
+		container.id = 'scl_flash_container';
+		document.body.appendChild(container);
+	}
+	var container = document.getElementById('scl_flash_container');
+
+	var iconos = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
+
+	var flash = document.createElement('div');
+	flash.className = 'scl-flash scl-flash--' + tipo;
+	flash.innerHTML =
+		'<span class="scl-flash__icon">' + ( iconos[tipo] || 'ℹ️' ) + '</span>'
+		+ '<span class="scl-flash__text">' + mensaje + '</span>'
+		+ '<button class="scl-flash__close" aria-label="Cerrar">&#x2715;</button>';
+
+	flash.querySelector('.scl-flash__close').addEventListener('click', function() {
+		scl_flash_remove(flash);
 	});
-	setTimeout(function() {
-		$flash.fadeOut(function() { jQuery(this).remove(); });
-	}, 4000);
+
+	container.appendChild(flash);
+
+	if ( duracion > 0 ) {
+		setTimeout(function() { scl_flash_remove(flash); }, duracion);
+	}
+}
+
+function scl_flash_remove(el) {
+	el.style.transition = 'opacity 0.25s, transform 0.25s';
+	el.style.opacity    = '0';
+	el.style.transform  = 'translateY(-8px)';
+	setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 260);
 }
 
 // Al cargar la página: leer sessionStorage para mensajes de éxito
 document.addEventListener('DOMContentLoaded', function() {
-	var flash = sessionStorage.getItem('scl_flash');
+	var flash      = sessionStorage.getItem('scl_flash');
+	var flash_tipo = sessionStorage.getItem('scl_flash_tipo') || 'success';
 	if (flash) {
-		scl_flash(flash);
+		scl_flash(flash, flash_tipo);
 		sessionStorage.removeItem('scl_flash');
+		sessionStorage.removeItem('scl_flash_tipo');
 	}
 
 	// Hamburguesa mobile
